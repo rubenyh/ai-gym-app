@@ -1,0 +1,8 @@
+# Secrets: never commit real env files (applies to every subdirectory).
+.env
+.env.*
+!.env.example
+
+# Python (services/coach-api, when created)
+__pycache__/
+.venv/
