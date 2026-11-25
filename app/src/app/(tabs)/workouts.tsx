@@ -1,5 +1,3 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { WorkoutsHome } from '@/features/workouts/workouts-home';
 
-export default function WorkoutsScreen() {
-  return <PlaceholderScreen title="Workouts" milestone="M2 (manual training)" />;
-}
+export default WorkoutsHome;
