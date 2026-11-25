@@ -8,6 +8,7 @@ them if a run shows a mismatch, and record device, OS and result in docs/IMPLEME
 Accounts: create two confirmed users first (sign up, open the Mailpit link at http://127.0.0.1:54324).
 
 ```bash
+# from app/
 maestro test -e EMAIL=a@example.test -e PASSWORD=... maestro/01-auth.yaml
 maestro test -e EMAIL=a@example.test -e PASSWORD=... maestro/02-offline-workout-recovery.yaml
 maestro test maestro/03-sync.yaml

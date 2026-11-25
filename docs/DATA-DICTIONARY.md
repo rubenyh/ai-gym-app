@@ -107,7 +107,10 @@ Typed root columns: `custom_exercises(name, archived)`; `routines(name, archived
 `programs(name, active, origin, coach_draft_id)` with unique partial index `programs_one_active_per_owner`
 (activating a program deactivates the previous one with a new revision); `sessions(routine_id, name, status
 active|completed, started_at, completed_at, timezone, local_date)` with unique partial index
-`sessions_one_active_per_owner`. **Access:** owner select only; writes only via `sync_push`.
+`sessions_one_active_per_owner`. Indexes: `<table>_owner_idx (owner_id)` on custom_exercises/routines/programs;
+sessions `sessions_owner_completed_idx (owner_id, completed_at desc)` and `sessions_owner_activity_ts_idx
+(owner_id, coalesce(completed_at, started_at))` (weekly-goal reconciliation range). Trigger `sessions_detach_posts`
+nulls `posts.source_session_id` when a session is tombstoned. **Access:** owner select only; writes only via `sync_push`.
 
 ### Sync bookkeeping (M3)
 
@@ -122,7 +125,7 @@ active|completed, started_at, completed_at, timezone, local_date)` with unique p
 | Table | Columns | Notes |
 | --- | --- | --- |
 | reward_events | id PK, owner_id, source_type session/week, source_id (session id or week Monday), reason session_completed/weekly_goal, rule_version, xp >= 0, active, created/updated | Unique `(owner_id, source_type, source_id, reason, rule_version)`; revoke/restore flips `active`. |
-| reward_event_log | id PK, owner_id, reward_event_id, action award/revoke/restore, xp, created_at | Correction audit trail. |
+| reward_event_log | id PK, owner_id, reward_event_id, action award/revoke/restore, xp, created_at | Correction audit trail. Indexes `(owner_id, created_at)`, `(reward_event_id)`. |
 | achievement_unlocks | (owner_id, badge_id) PK, unlocked_at | Permanent. Badge ids from reward-rules.v1.json. |
 | pet_unlocks | (owner_id, stage) PK, unlocked_at | Permanent. stage = 1-based index into `petStageLevels`. |
 
@@ -134,7 +137,7 @@ row in force for the completion instant (its timezone defines week and local day
 
 | Table | Columns | Notes |
 | --- | --- | --- |
-| coach_requests | (owner_id, request_id) PK, mode create/adjust, program_id, base_revision, input jsonb (object <= 8 KB, minimized), status, created/updated | Rate limit 10 new requests/hour/user. Status mirrors its draft. |
+| coach_requests | (owner_id, request_id) PK, mode create/adjust, program_id, base_revision, input jsonb (object <= 8 KB, minimized), status, created/updated | Rate limit 10 new requests/hour/user. Status mirrors its draft (trigger `coach_drafts_sync_request_status`). |
 | coach_drafts | id PK, owner_id, request_id (unique per owner, FK coach_requests), status pending/ready/needs_input/failed/approved/cancelled, base_program_id, base_program_revision, content (CoachDraftContent), clarification, error, schema_version, model, approval_id unique, approved_at, created/updated | Approved once through the `coach_approval` push op. |
 
 Owner select only; written only by the coach RPCs (user token) and `sync_push`.
@@ -171,7 +174,7 @@ in their own folder; others read only while the referencing post is accessible t
 | `week_start(ts, tz) → date` | helper | Monday of the local week containing `ts` in `tz`. |
 | `is_valid_timezone(tz) → boolean` | helper | IANA zone check used by constraints. |
 | `has_weekly_goal(uid) → boolean` | security definer, not executable by anon | Lets the insert policy check existing goals without RLS recursion. |
-| `set_updated_at()`, `carry_goal_timezone()` | triggers | See tables above. |
+| `set_updated_at()`, `carry_goal_timezone()`, `private.sync_coach_request_status()`, `private.detach_posts_from_deleted_session()` | triggers | See tables above. |
 | `sync_push(p_op jsonb) -> jsonb` | RPC, security definer | PushOp -> PushResult. Owner from `auth.uid()`; receipt + write + change log + rewards in one transaction. Rejection codes: `invalid_doc`, `forbidden`, `unknown_aggregate`, `active_session_exists`, `constraint_violation`, `draft_not_found`, `already_approved`, `draft_not_ready`, `stale_approval`. |
 | `sync_pull(p_after bigint, p_limit int) -> jsonb` | RPC, security definer | ChangePage for the caller, limit 1-500 (default 100). |
 | `get_reward_rules() -> jsonb` | RPC | Mirrors `reward-rules.v1.json` (API test compares). |
@@ -184,12 +187,14 @@ in their own folder; others read only while the referencing post is accessible t
 | `get_feed(before, limit)`, `search_profiles(query, limit)`, `list_follow_requests()` | RPC, security invoker | RLS applies. |
 | `private.*` | internal (schema not exposed by the API) | Validators and sync/reward/coach internals; only the `is_blocked`/`can_view_*` RLS helpers are executable by `authenticated`. |
 
-RPCs run as the caller, so RLS applies. `anon` cannot execute them.
+Security-invoker RPCs run as the caller, so RLS applies; security-definer RPCs derive the actor from `auth.uid()`
+and check ownership themselves. `anon` cannot execute them.
 
 ## Device (SQLite, one file per account: `account-<user id>.db`)
 
-Read-through cache of server rows so a previously signed-in user can open the app offline (AUTH-02).
-Server data is authoritative; the cache is replaced in one transaction after each successful fetch.
+M1 identity tables below are a read-through cache of server rows so a previously signed-in user can open the app
+offline (AUTH-02); they are replaced in one transaction after each successful fetch. Training data (M2/M3) is the
+durable local source and syncs through the outbox.
 Migrations: `app/src/db/migrations/` (Drizzle), run before any query.
 
 | Table | Columns | Notes |

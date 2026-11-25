@@ -56,22 +56,27 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | Typecheck | `npm run typecheck` | passes. Runs `expo customize tsconfig.json` first to generate gitignored `expo-env.d.ts` and typed-route types, then `tsc --noEmit`. |
 | Lint | `npm run lint` | passes (ESLint 9 flat config, `eslint-config-expo`) |
 | Unit tests | `npm test` | passes (jest-expo, React Native Testing Library 14) |
+| App integration tests | `npm run test:integration` (local stack env exported, see API isolation row) | passes per [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) final checks; refuses non-local URLs |
 | Diagnose deps | `npx expo-doctor` | 20/20 checks passed (downloads expo-doctor on demand) |
 | Android dev build | `npm run android` (`expo run:android`) | **fails on this Windows machine** (path length, O-13); see [M0 status](docs/IMPLEMENTATION_PLAN.md#m0-status-2026-11-25) |
 | Dev server | `npx expo start` | serves the installed development build |
 | iOS dev build | `npm run ios` | **not verified**: needs macOS or EAS Build (open O-06) |
 | Local backend | `supabase start` (repo root) | works with Docker Desktop running (local stack only) |
+| Backend readiness | `bash scripts/supabase-ready.sh` (repo root) | probes REST + Storage via Kong; on 502 restarts Kong once (stale container IPs after `db reset`), bounded 10 × 1 s |
+| Apply new migrations | `supabase migration up --local` | applies pending files without wiping data |
 | Rebuild local DB | `supabase db reset --local` | applies `supabase/migrations/` from scratch; **local only** |
 | DB permission tests | `supabase test db` | passes (pgTAP, `supabase/tests/database/`) |
 | API isolation tests | `set -a; eval "$(supabase status -o env)"; set +a; node --test supabase/tests/api/*.test.mjs` | passes; refuses non-local URLs |
 | DB lint | `supabase db lint --local --level warning` | no errors |
 | DB types | `supabase gen types typescript --local --schema public > app/src/services/supabase/database.types.ts` | regenerate after each migration |
 | Local SQLite migrations | `npm run db:generate` (in `app/`) | Drizzle; regenerate after editing `app/src/db/schema.ts` |
+| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api`, Python 3.12 venv) | 32 tests collected; setup in [services/coach-api/README.md](services/coach-api/README.md) |
 | Catalog import | `node scripts/import-exercises.mjs <clone-of-exercises-dataset>` (in `app/`) | writes `assets/catalog/exercises.v1.json` (metadata only, pinned SHA in ATTRIBUTION.md) |
 | Sync end-to-end | `set -a; eval "$(supabase status -o env)"; set +a; npm run test:integration` (in `app/`) | passes, 7 tests; real engine + repositories vs local stack; refuses non-local URLs |
 | Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per its README) | passes; integration test runs only when local Supabase env vars are exported |
 | Kong after reset | `docker restart supabase_kong_ai-gym-app` | needed when Storage/REST return 502 after `supabase db reset` (CLI 2.75) |
 
+Full local setup (prerequisites, env files, stack, app, coach): [docs/SETUP.md](docs/SETUP.md).
 Update this table when a command is added or its status changes. Never document a command you have
 not run or confirmed exists.
 

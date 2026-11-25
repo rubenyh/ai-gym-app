@@ -1,6 +1,7 @@
 # Database diagram
 
-Implemented server schema as of M6 (2026-11-25). Column details and access rules: [DATA-DICTIONARY.md](DATA-DICTIONARY.md).
+Implemented server schema as of M6 (2026-11-25). Entities show key columns; `created_at`/`updated_at` are omitted
+below the first diagram. Column details and access rules: [DATA-DICTIONARY.md](DATA-DICTIONARY.md).
 
 ## Server (Supabase)
 
@@ -95,12 +96,15 @@ erDiagram
     PROGRAMS }o..o{ ROUTINES : "doc.days[].routineId"
     SESSIONS }o..o| ROUTINES : "routine_id (snapshot)"
     SESSIONS ||..o| REWARD_EVENTS : "source_id"
+    COACH_DRAFTS |o..o| PROGRAMS : "coach_draft_id (no FK)"
 
     SESSIONS {
         uuid id PK "client id"
         uuid owner_id FK
         int revision
         boolean deleted "tombstone"
+        uuid routine_id "no FK"
+        text name
         text status "active | completed"
         timestamptz started_at
         timestamptz completed_at
@@ -113,6 +117,7 @@ erDiagram
         uuid owner_id FK
         int revision
         boolean deleted
+        text name
         boolean active
         text origin "manual | coach"
         uuid coach_draft_id
@@ -123,6 +128,8 @@ erDiagram
         uuid owner_id FK
         int revision
         boolean deleted
+        text name
+        boolean archived
         text origin
         jsonb doc "RoutineDoc"
     }
@@ -131,6 +138,8 @@ erDiagram
         uuid owner_id FK
         int revision
         boolean deleted
+        text name
+        boolean archived
         jsonb doc "CustomExerciseDoc"
     }
     ACCOUNT_SYNC_STATE {
@@ -162,6 +171,7 @@ erDiagram
     }
     REWARD_EVENT_LOG {
         bigint id PK
+        uuid owner_id FK
         bigint reward_event_id FK
         text action "award | revoke | restore"
         int xp
@@ -179,7 +189,9 @@ erDiagram
     COACH_REQUESTS {
         uuid owner_id PK
         uuid request_id PK
-        text mode
+        text mode "create | adjust"
+        uuid program_id
+        int base_revision
         jsonb input "minimized"
         text status
     }
@@ -191,7 +203,12 @@ erDiagram
         uuid base_program_id
         int base_program_revision
         jsonb content
+        jsonb clarification
+        jsonb error
+        int schema_version
+        text model
         uuid approval_id UK
+        timestamptz approved_at
     }
 ```
 
@@ -271,5 +288,6 @@ erDiagram
     }
 ```
 
-Device tables are a cache of the signed-in account's server rows; the file itself is the account boundary,
-so no owner columns are needed.
+Only the M1 identity cache is drawn. The M2/M3 device tables (catalog, custom exercises, routines, programs,
+sessions with exercises/sets, body weight, rest timer, `outbox`, `sync_state`, `sync_conflicts`, `reward_cache`)
+are defined in `app/src/db/schema.ts`. The file itself is the account boundary, so no owner columns are needed.
