@@ -1,0 +1,290 @@
+[
+ {
+  "sourceId": "0001",
+  "name": "Push-up",
+  "bodyPart": "chest",
+  "target": "pectorals",
+  "primaryMuscles": [
+   "pectorals"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "body weight"
+  ],
+  "instructions": [],
+  "loadMode": "bodyweight",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0002",
+  "name": "Bodyweight Squat",
+  "bodyPart": "upper legs",
+  "target": "quads",
+  "primaryMuscles": [
+   "quads"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "body weight"
+  ],
+  "instructions": [],
+  "loadMode": "bodyweight",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0003",
+  "name": "Inverted Row",
+  "bodyPart": "back",
+  "target": "lats",
+  "primaryMuscles": [
+   "lats"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "body weight"
+  ],
+  "instructions": [],
+  "loadMode": "bodyweight",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0004",
+  "name": "Plank",
+  "bodyPart": "waist",
+  "target": "abs",
+  "primaryMuscles": [
+   "abs"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "body weight"
+  ],
+  "instructions": [],
+  "loadMode": "bodyweight",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0005",
+  "name": "Glute Bridge",
+  "bodyPart": "upper legs",
+  "target": "glutes",
+  "primaryMuscles": [
+   "glutes"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "body weight"
+  ],
+  "instructions": [],
+  "loadMode": "bodyweight",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0010",
+  "name": "Dumbbell Row",
+  "bodyPart": "back",
+  "target": "lats",
+  "primaryMuscles": [
+   "lats"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "dumbbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0011",
+  "name": "Dumbbell Biceps Curl",
+  "bodyPart": "upper arms",
+  "target": "biceps",
+  "primaryMuscles": [
+   "biceps"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "dumbbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0012",
+  "name": "Dumbbell Hammer Curl",
+  "bodyPart": "upper arms",
+  "target": "biceps",
+  "primaryMuscles": [
+   "biceps"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "dumbbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0013",
+  "name": "Dumbbell Shoulder Press",
+  "bodyPart": "shoulders",
+  "target": "delts",
+  "primaryMuscles": [
+   "delts"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "dumbbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0014",
+  "name": "Dumbbell Lunge",
+  "bodyPart": "upper legs",
+  "target": "quads",
+  "primaryMuscles": [
+   "quads"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "dumbbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0020",
+  "name": "Barbell Bench Press",
+  "bodyPart": "chest",
+  "target": "pectorals",
+  "primaryMuscles": [
+   "pectorals"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "barbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0021",
+  "name": "Barbell Back Squat",
+  "bodyPart": "upper legs",
+  "target": "quads",
+  "primaryMuscles": [
+   "quads"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "barbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0022",
+  "name": "Barbell Deadlift",
+  "bodyPart": "back",
+  "target": "lower back",
+  "primaryMuscles": [
+   "lower back"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "barbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0023",
+  "name": "Barbell Row",
+  "bodyPart": "back",
+  "target": "upper back",
+  "primaryMuscles": [
+   "upper back"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "barbell"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0030",
+  "name": "Cable Lat Pulldown",
+  "bodyPart": "back",
+  "target": "lats",
+  "primaryMuscles": [
+   "lats"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "cable"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0031",
+  "name": "Cable Biceps Curl",
+  "bodyPart": "upper arms",
+  "target": "biceps",
+  "primaryMuscles": [
+   "biceps"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "cable"
+  ],
+  "instructions": [],
+  "loadMode": "external",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0040",
+  "name": "Assisted Pull-up",
+  "bodyPart": "back",
+  "target": "lats",
+  "primaryMuscles": [
+   "lats"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "assisted"
+  ],
+  "instructions": [],
+  "loadMode": "assisted",
+  "mediaRights": "unresolved"
+ },
+ {
+  "sourceId": "0041",
+  "name": "Pull-up",
+  "bodyPart": "back",
+  "target": "lats",
+  "primaryMuscles": [
+   "lats"
+  ],
+  "secondaryMuscles": [],
+  "equipment": [
+   "body weight"
+  ],
+  "instructions": [],
+  "loadMode": "bodyweight",
+  "mediaRights": "unresolved"
+ }
+]

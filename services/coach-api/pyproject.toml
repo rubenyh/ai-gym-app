@@ -1,0 +1,27 @@
+[project]
+name = "coach-api"
+version = "0.1.0"
+description = "AI Gym App coach service (FastAPI + LangGraph). Server-only."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.165.0",
+  "pydantic==2.14.4",
+  "langgraph==1.2.24",
+  "httpx==0.28.1",
+  "google-genai==3.6.1",
+  "uvicorn==0.54.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["coach_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
