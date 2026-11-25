@@ -93,7 +93,7 @@ select public.respond_follow_request('cccccccc-0000-4000-8000-000000000003', tru
 reset role;
 select pg_temp.as_user('cccccccc-0000-4000-8000-000000000003');
 set local role authenticated;
-select is(jsonb_array_length(public.get_feed(null, 20)), 1, 'accepted follower sees the post in the feed');
+select is(jsonb_array_length(public.get_feed(null, null, 20)), 1, 'accepted follower sees the post in the feed');
 select is((select count(*)::int from storage.objects where bucket_id = 'post-photos'), 1, 'accepted follower can read the photo');
 
 -- remove follower
