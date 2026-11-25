@@ -48,10 +48,14 @@ before(async () => {
     p_target_days: 3,
   });
   if (error) throw error;
-  const bw = await users.a.client
-    .from('body_weight_entries')
-    .insert({ measured_at: new Date().toISOString(), weight_grams: 81000 });
-  if (bw.error) throw bw.error;
+  const bwId = crypto.randomUUID();
+  const bw = await users.a.client.rpc('sync_push', {
+    p_op: {
+      opId: crypto.randomUUID(), aggregateType: 'body_weight', aggregateId: bwId, action: 'upsert', baseRevision: null,
+      doc: { id: bwId, measuredAt: new Date().toISOString(), weightGrams: 81000 },
+    },
+  });
+  if (bw.error || bw.data.status !== 'applied') throw bw.error ?? new Error(JSON.stringify(bw.data));
   const tp = await users.a.client.from('training_profiles').insert({ age: 30, limitations: 'knee' });
   if (tp.error) throw tp.error;
 });
