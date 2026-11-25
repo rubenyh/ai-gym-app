@@ -29,6 +29,19 @@ python -m venv .venv
 .venv/Scripts/python -m pytest -q
 ```
 
+## Integration test (local Supabase stack only)
+
+Real auth, RPCs and RLS with the scripted model: draft persistence, request-ID idempotency, approval via
+`sync_push` (applied once, duplicate, second approval rejected, stale base conflict), failed draft leaves the
+active program unchanged, cross-account read denied, PT429 → HTTP 429. Skipped unless the env is set; refuses
+non-local URLs; creates fresh users with the service-role key (test-only) and never resets the database.
+
+```sh
+# repo root, bash, `supabase start` running and migrations applied
+set -a; eval "$(supabase status -o env)"; set +a
+cd services/coach-api && .venv/Scripts/python -m pytest -q tests/test_integration_local.py
+```
+
 ## Run locally
 
 Set the server-only variables from the repo-root [.env.example](../../.env.example) in your shell
