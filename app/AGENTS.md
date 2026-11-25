@@ -1,5 +1,7 @@
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
+Project-wide rules, specs and definition of done: [../AGENTS.md](../AGENTS.md) and [../docs/](../docs/README.md). This file only adds Expo SDK guidance. Cloud builds, `eas submit` and `eas update` require explicit user approval (no deployment/publishing during the prototype).
+
 ## Expo has changed — do not trust your training data
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
