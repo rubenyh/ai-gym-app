@@ -2,7 +2,8 @@
 
 Derived from [DELIVERY_PLAN.md](DELIVERY_PLAN.md). Requirement IDs refer to [REQUIREMENTS.md](REQUIREMENTS.md);
 decision/blocker IDs (`O-xx`, `D-xx`) refer to [DECISIONS.md](DECISIONS.md). Status as of 2026-11-25:
-**nothing implemented**; `app/` is the unmodified Expo SDK 58 starter, `supabase/` has only `config.toml`.
+**M0 in progress** (code and automated checks done; Android native build blocked by O-13, see
+[M0 status](#m0-status-2026-11-25)); no product features; `supabase/` has only `config.toml`.
 
 ## Dependency graph
 
@@ -42,6 +43,64 @@ Likely files: `app/package.json`, `app/app.json`, `app/eas.json` (if EAS chosen)
 Acceptance: typecheck, lint, and tests pass; Android and iOS development builds run the spike; `npx expo-doctor`
 clean or findings documented.
 Blockers: **O-04** Rive compatibility, **O-05** identifiers, **O-06** iOS build path.
+
+### M0 status (2026-11-25)
+
+**Done (code):** starter demo removed (D-12); central tab shell `app/src/navigation/tabs.ts` + thin routes in
+`app/src/app/(tabs)/`; dev-only route `app/src/app/dev/verify.tsx` →
+`app/src/features/dev-verification/` (SQLite probe, Rive sample with static fallback, Reanimated keyframe with
+`ReduceMotion.System`, deep-link param); provisional identifiers `com.rubenyh.aigym` / scheme `aigym` (O-05);
+Rive sample `app/assets/rive/rating.riv` with [attribution](../app/assets/rive/ATTRIBUTION.md); ESLint, jest-expo.
+
+Installed native packages: `expo-sqlite ~58.0.18`, `expo-dev-client ~58.0.21`, `@rive-app/react-native 0.5.18`,
+`react-native-nitro-modules 0.36.5` (D-11); Reanimated 4.7.1 / worklets 0.13.0 and Expo Router were already present.
+
+| Check | Command (from `app/`) | Result |
+| --- | --- | --- |
+| Typecheck | `npm run typecheck` | pass |
+| Lint | `npm run lint` | pass, 0 problems |
+| Unit tests | `npm test` | pass, 2 suites / 11 tests (tab config ↔ route files; Rive fallback; SQLite count read-back; deep-link param) |
+| Dependency health | `npx expo-doctor` | 20/20 checks passed |
+| Android JS bundle | `npx expo export --platform android --output-dir <tmp>` | pass; Hermes bundle built, `rating.riv` included as asset |
+| Android native build | `npm run android` (emulator `Medium_Phone_API_36.1`, JDK 17) | **FAIL — environment blocker O-13** |
+| Android device verification | manual steps below | **not performed** (no installed build) |
+| iOS build / device | — | **pending O-06** (config prepared, not verified) |
+
+Unit tests mock the Rive runtime and SQLite; they do not prove native behavior.
+
+**Android build failure (O-13).** Prebuild succeeds; Gradle fails in native CMake/ninja steps with
+`ninja: error: mkdir(CMakeFiles/reanimated.dir/C_/repos/clases/heterogenas/ai-gym-app/app/node_modules/react-native-reanimated/Common/cpp/reanimated/CSS/common/filters): No such file or directory`.
+Windows `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled` is `0`, so object paths over 260
+characters fail. Attempts: CMake 3.31.6 (ninja 1.12.1) via `cmake.dir` in gitignored `app/android/local.properties`
+— same error; `subst` short drive — Gradle resolves back to the long path; temporary worktree at `C:\ag` —
+Reanimated compiled but `react-native-gesture-handler` codegen still exceeded 260 characters. Not a package
+incompatibility: no package was downgraded or swapped.
+
+Resolution options (user decision): enable Windows long paths (admin, then reboot/new shell) and keep CMake
+3.31.6; or build in WSL/Linux; or EAS Build (account, see O-06).
+
+**Reproduce / finish verification after O-13 is resolved:**
+
+```bash
+cd app
+npm ci
+# Windows only: Android SDK CMake 3.31.6 and long paths enabled
+#   sdkmanager "cmake;3.31.6"
+#   echo cmake.dir=C:/Users/<you>/AppData/Local/Android/Sdk/cmake/3.31.6 >> android/local.properties  (after prebuild)
+npm run android                 # prebuild + Gradle build + install com.rubenyh.aigym on emulator/device
+npx expo start                  # Metro for the development build
+adb shell am start -W -a android.intent.action.VIEW -d "aigym://dev/verify?source=adb" com.rubenyh.aigym
+```
+
+Device checklist (record device, OS version, result):
+1. Deep link opens **M0 verification** showing `Opened via deep link (source=adb)`.
+2. Press **Increment and save** twice; note count; `adb shell am force-stop com.rubenyh.aigym`; reopen via deep link; count unchanged.
+3. Rive sample animates; **Force static fallback** shows the static character; screen stays usable.
+4. **Replay keyframe** pops the badge; enable Settings → Accessibility → Remove animations, relaunch: badge appears
+   without animating, status text says reduced motion on, Rive autoplay off.
+5. All five tabs render; Home shows the dev link only in development builds.
+
+M0 exit remains open until steps 1–5 pass on Android. iOS repeats them after O-06.
 
 ## M1 — Backend foundation, auth, account-scoped local DB
 
@@ -174,6 +233,5 @@ Blockers: **O-10** reference devices; **O-11** only if external release is plann
 
 ## First concrete step
 
-Start **M0**: reset the starter, fix the three typecheck errors, add lint/test tooling, then the native spike
-(SQLite persistence + Rive + Reanimated + deep link) in Android and iOS development builds. Get **O-05**
-(app identifier/scheme) and **O-06** (iOS build path) from the user before the native build step.
+Resolve **O-13** (Windows long paths, or build in WSL/EAS), then run `npm run android` and the M0 device
+checklist above. M1 schema/RLS work in `supabase/` does not depend on the native build and can start in parallel.

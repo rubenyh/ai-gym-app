@@ -37,8 +37,9 @@ services/coach-api/  planned: FastAPI + LangGraph coach service (does not exist 
 docs/                specifications
 ```
 
-`app/` currently contains the unmodified `create-expo-app` starter (Home/Explore tabs). The earlier
-Flutter project was already removed from `app/` in commit `fbc5047`; no Flutter migration remains.
+`app/` has the M0 tab shell (placeholder screens) and a dev-only native verification route
+(`/dev/verify`); no product features yet. The earlier Flutter project was already removed from `app/`
+in commit `fbc5047`; no Flutter migration remains.
 
 ## Commands (verified against this repository on 2026-11-25)
 
@@ -49,11 +50,13 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | --- | --- | --- |
 | Install | `npm install` | lockfile present |
 | Add dependency | `npx expo install <package>` | required instead of `npm install <pkg>` for SDK-compatible versions |
-| Typecheck | `npx tsc --noEmit` | runs; **currently fails with 3 starter-template errors** (missing generated `expo-env.d.ts` CSS types, web tab `ref` type). Fixing them is milestone M0. |
-| Lint | `npm run lint` (`expo lint`) | script exists; ESLint not installed yet; not run |
-| Dev server | `npx expo start` | not run during setup |
-| Diagnose deps | `npx expo-doctor` | not run during setup |
-| Unit tests | — | no test runner configured yet (jest-expo planned, M0) |
+| Typecheck | `npm run typecheck` | passes. Runs `expo customize tsconfig.json` first to generate gitignored `expo-env.d.ts` and typed-route types, then `tsc --noEmit`. |
+| Lint | `npm run lint` | passes (ESLint 9 flat config, `eslint-config-expo`) |
+| Unit tests | `npm test` | passes (jest-expo, React Native Testing Library 14) |
+| Diagnose deps | `npx expo-doctor` | 20/20 checks passed (downloads expo-doctor on demand) |
+| Android dev build | `npm run android` (`expo run:android`) | **fails on this Windows machine** (path length, O-13); see [M0 status](docs/IMPLEMENTATION_PLAN.md#m0-status-2026-11-25) |
+| Dev server | `npx expo start` | serves the installed development build |
+| iOS dev build | `npm run ios` | **not verified**: needs macOS or EAS Build (open O-06) |
 | Local backend | `supabase start` (repo root) | needs Docker; not run |
 | DB permission tests | `supabase test db` (pgTAP) | subcommand exists; no tests yet |
 | DB lint | `supabase db lint` | subcommand exists; no migrations yet |
