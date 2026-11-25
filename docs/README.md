@@ -3,7 +3,7 @@
 Status: implementation-ready product baseline, not an implemented application.
 Prepared: 2026-11-25. Working name: AI Gym App; final branding is undecided.
 
-Copy this entire `docs/` directory into the existing repository. These documents supersede the earlier Flutter direction: the mobile app is now Expo + React Native + TypeScript. Do not assume the actual repository has already been migrated.
+Copy this entire `docs/` directory into the existing repository. These documents supersede the earlier Flutter direction: the mobile app is now Expo + React Native + TypeScript. Repository status (2026-11-25): the Expo app lives in `app/`; the Flutter project was already removed. Engineering instructions: [`AGENTS.md`](../AGENTS.md).
 
 ## Reading order
 
@@ -15,7 +15,9 @@ Copy this entire `docs/` directory into the existing repository. These documents
 6. [AI coach](AI_COACH.md): generation workflow, contracts, and approval.
 7. [Progress and gamification](PROGRESS_AND_GAMIFICATION.md): proposed numerical rules and calculations.
 8. [Delivery plan](DELIVERY_PLAN.md): implementation sequence, checks, and remaining decisions.
-9. [Claude setup prompt](CLAUDE_SETUP_PROMPT.md): paste into Claude in the repository to establish development instructions and supporting documentation.
+9. [Implementation plan](IMPLEMENTATION_PLAN.md): ordered milestones, dependencies, acceptance checks, blockers.
+10. [Decision log](DECISIONS.md): confirmed choices, implementation defaults, open dependencies.
+11. [Claude setup prompt](CLAUDE_SETUP_PROMPT.md): paste into Claude in the repository to establish development instructions and supporting documentation.
 
 ## Decision status
 
