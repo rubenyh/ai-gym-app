@@ -1,5 +1,3 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { CoachScreen } from '@/features/coach/coach-screen';
 
-export default function CoachScreen() {
-  return <PlaceholderScreen title="Coach" milestone="M5 (AI coach)" />;
-}
+export default CoachScreen;
