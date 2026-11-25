@@ -6,14 +6,14 @@ import { ThemedText } from '@/components/themed-text';
 import { useLocalQuery, useRepositories } from '@/db/repositories-context';
 import { bodyWeightDoc } from '@/domain/contracts';
 import { formatWeight, parseWeight } from '@/domain/units';
+import { useWeightUnit } from '@/features/workouts/common';
 
 import { Muted, PENDING_LABEL, Section } from './ui';
-import { useProgressData } from './use-progress-data';
 
 /** Private body-weight time series (PROGRESS-01). Stored in grams; entered/shown in the user's unit. */
 export function BodyWeightScreen() {
   const repos = useRepositories();
-  const { unit } = useProgressData();
+  const unit = useWeightUnit();
   const entries = useLocalQuery((r) => [...r.bodyWeight.list()].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt)), []);
   const [text, setText] = useState('');
   const [editing, setEditing] = useState<{ id: string; measuredAt: string } | null>(null);

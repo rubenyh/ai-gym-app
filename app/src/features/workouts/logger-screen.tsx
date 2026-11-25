@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { Button, TextField } from '@/components/form';
@@ -32,10 +32,23 @@ export function previousText(prev: PreviousResult | null, unit: WeightUnit): str
   return `Last time: ${sets.join(', ')}`;
 }
 
-/** Rest countdown from the persisted deadline: recomputed from the wall clock, so it survives restarts. */
-export function RestTimerBanner({ timer, now, onDismiss }: { timer: RestTimer; now: number; onDismiss: () => void }) {
+/**
+ * Rest countdown from the persisted deadline: recomputed from the wall clock, so it survives restarts.
+ * Owns its 1 s ticker so only this banner re-renders each second, never the set list.
+ */
+export function RestTimerBanner({ timer, onDismiss }: { timer: RestTimer; onDismiss: () => void }) {
   if (!timer) return null;
-  const remaining = Date.parse(timer.endsAt) - now;
+  return <RestCountdown endsAt={timer.endsAt} onDismiss={onDismiss} />;
+}
+
+/** Elapsed workout time; isolated ticker (see RestTimerBanner). */
+export function ElapsedClock({ startedAt }: { startedAt: string }) {
+  const text = formatClock(useNow() - Date.parse(startedAt));
+  return <ThemedText accessibilityLabel={`Elapsed ${text}`}>{text}</ThemedText>;
+}
+
+function RestCountdown({ endsAt, onDismiss }: { endsAt: string; onDismiss: () => void }) {
+  const remaining = Date.parse(endsAt) - useNow();
   return (
     <Card>
       <Row>
@@ -52,17 +65,16 @@ export function RestTimerBanner({ timer, now, onDismiss }: { timer: RestTimer; n
 export function LoggerScreen({ sessionId }: { sessionId: string }) {
   const repos = useRepositories();
   const unit = useWeightUnit();
-  const now = useNow();
   const [picking, setPicking] = useState(false);
-  const data = useLocalQuery(
-    (r) => {
-      const session = r.sessions.get(sessionId);
-      const previous = new Map((session?.exercises ?? []).map((e) => [e.id, r.sessions.previousResults(e.exerciseKey, sessionId)]));
-      return { session, previous, timer: r.sessions.restTimer() };
-    },
-    [sessionId],
-  );
+  const data = useLocalQuery((r) => ({ session: r.sessions.get(sessionId), timer: r.sessions.restTimer() }), [sessionId]);
   const { session } = data;
+  // Previous results exclude this session, so set saves cannot change them: re-query only when the
+  // exercise list changes, not on every committed set (one query per exercise).
+  const exerciseKeys = (session?.exercises ?? []).map((e) => e.exerciseKey).join('|');
+  const previous = useMemo(
+    () => new Map(exerciseKeys ? exerciseKeys.split('|').map((k) => [k, repos.sessions.previousResults(k, sessionId)]) : []),
+    [repos, exerciseKeys, sessionId],
+  );
 
   const run = (write: () => void) => {
     try {
@@ -111,16 +123,14 @@ export function LoggerScreen({ sessionId }: { sessionId: string }) {
         <ThemedText type="smallBold" style={{ flex: 1 }}>
           {session.name}
         </ThemedText>
-        <ThemedText accessibilityLabel={`Elapsed ${formatClock(now - Date.parse(session.startedAt))}`}>
-          {formatClock(now - Date.parse(session.startedAt))}
-        </ThemedText>
+        <ElapsedClock startedAt={session.startedAt} />
       </Row>
       <SyncBadge meta={session} />
-      <RestTimerBanner timer={timerForThis} now={now} onDismiss={() => run(() => repos.sessions.clearRestTimer())} />
+      <RestTimerBanner timer={timerForThis} onDismiss={() => run(() => repos.sessions.clearRestTimer())} />
 
       {session.exercises.length === 0 ? <ThemedText themeColor="textSecondary">No exercises yet. Add one to start logging.</ThemedText> : null}
       {session.exercises.map((ex, i) => {
-        const prev = previousText(data.previous.get(ex.id) ?? null, unit);
+        const prev = previousText(previous.get(ex.exerciseKey) ?? null, unit);
         return (
           <Card key={ex.id}>
             <SectionTitle>{ex.exerciseName}</SectionTitle>

@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useIsFocused } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -21,6 +21,8 @@ export function HomeScreen() {
   const name = state.kind === 'ready' ? state.account.profile.displayName : null;
   const { sessions, goals, progression: p, today } = useProgressData();
   const start = useStartSession();
+  // Tabs stay mounted: show the static pet while Home is hidden so no Rive render loop runs off-screen.
+  const focused = useIsFocused();
 
   const active = useLocalQuery((r) => r.sessions.active(), []);
   const weekday = isoWeekday(today);
@@ -45,7 +47,7 @@ export function HomeScreen() {
           </ThemedText>
 
           <Section title="Your pet">
-            <PetCharacter stage={p.petStage} />
+            <PetCharacter stage={p.petStage} forceStatic={!focused} />
             <ThemedText type="smallBold" testID="level">
               Level {p.level}
             </ThemedText>
@@ -109,6 +111,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: Spacing.four, gap: Spacing.three },
+  // Room for the floating ActiveSessionBar above the tab bar.
+  content: { padding: Spacing.four, gap: Spacing.three, paddingBottom: Spacing.six * 2 },
   link: { minHeight: 44, paddingVertical: Spacing.two },
 });

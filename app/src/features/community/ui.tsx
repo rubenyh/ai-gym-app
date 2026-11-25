@@ -79,16 +79,29 @@ export function SnapshotView({ snapshot, unit }: { snapshot: PostSnapshot; unit:
 
 /** Private post photo through a short-lived signed URL; memory cache only (never written to disk). */
 export function PostPhoto({ path }: { path: string }) {
-  const [url, setUrl] = useState<string | null>(null);
+  // undefined = loading, null = unavailable (denied, deleted, offline or expired URL).
+  const [url, setUrl] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
-    signedPhotoUrl(path).then((u) => !cancelled && setUrl(u));
+    signedPhotoUrl(path).then(
+      (u) => !cancelled && setUrl(u),
+      () => !cancelled && setUrl(null),
+    );
     return () => {
       cancelled = true;
     };
   }, [path]);
-  if (!url) return <ThemedView type="backgroundElement" style={styles.photo} accessibilityLabel="Photo loading" />;
-  return <Image source={{ uri: url }} cachePolicy="memory" style={styles.photo} accessibilityLabel="Workout photo" />;
+  if (url === undefined) return <ThemedView type="backgroundElement" style={styles.photo} accessibilityLabel="Photo loading" />;
+  if (url === null) {
+    return (
+      <ThemedView type="backgroundElement" style={[styles.photo, styles.center]}>
+        <ThemedText type="small">Photo unavailable</ThemedText>
+      </ThemedView>
+    );
+  }
+  return (
+    <Image source={{ uri: url }} cachePolicy="memory" style={styles.photo} accessibilityLabel="Workout photo" onError={() => setUrl(null)} />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -96,4 +109,5 @@ const styles = StyleSheet.create({
   message: { padding: 16, gap: 8 },
   snapshot: { gap: 6 },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12 },
+  center: { alignItems: 'center', justifyContent: 'center' },
 });

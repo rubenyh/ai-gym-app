@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
+import { ThemedText, useAccentColors } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -30,6 +30,7 @@ export function TextField({
   ...props
 }: TextInputProps & { label: string; error?: string }) {
   const theme = useTheme();
+  const accent = useAccentColors();
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold">{label}</ThemedText>
@@ -40,7 +41,7 @@ export function TextField({
         {...props}
       />
       {error ? (
-        <ThemedText type="small" style={styles.error} accessibilityLiveRegion="polite">
+        <ThemedText type="small" style={{ color: accent.error }} accessibilityLiveRegion="polite">
           {error}
         </ThemedText>
       ) : null}
@@ -107,11 +108,12 @@ export function Button({
 }
 
 export function FormMessage({ text, tone = 'error' }: { text?: string | null; tone?: 'error' | 'info' }) {
+  const accent = useAccentColors();
   if (!text) return null;
   return (
     <ThemedText
       type="small"
-      style={tone === 'error' ? styles.error : undefined}
+      style={tone === 'error' ? { color: accent.error } : undefined}
       accessibilityLiveRegion="polite"
       accessibilityRole={tone === 'error' ? 'alert' : undefined}>
       {text}
@@ -127,7 +129,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: { minHeight: 44, minWidth: 44, paddingHorizontal: Spacing.three, borderRadius: Spacing.three, justifyContent: 'center', alignItems: 'center' },
   button: { minHeight: 48, borderRadius: Spacing.three, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.three },
-  error: { color: '#C62828' },
 });
 
 /** Padding that gives inline text links a 44pt touch target (NFR-06). */

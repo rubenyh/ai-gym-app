@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useIsFocused } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useLocalQuery } from '@/db/repositories-context';
+import { useRepositories } from '@/db/repositories-context';
 import type { RewardSummary } from '@/domain/contracts';
 import type { Repositories } from '@/domain/repositories';
 import type { WeightUnit } from '@/domain/units';
@@ -16,6 +17,46 @@ export function readRewardSummary(r: Repositories): RewardSummary | null {
   return cache?.get() ?? null;
 }
 
+/**
+ * All-time records, volume and pending XP need every completed session; `history()` defaults to 50.
+ * ponytail: N+1 session reads per refresh; add a summary table/incremental cache if history grows to thousands.
+ */
+export const ALL_HISTORY = Number.MAX_SAFE_INTEGER;
+
+/**
+ * useLocalQuery variant for screens that stay mounted under other screens (tabs under the logger):
+ * writes made while unfocused only mark the data dirty, so each set save does not recompute full
+ * history in every mounted tab. The read runs once when the screen regains focus.
+ */
+export function useFocusedLocalQuery<T>(read: (r: Repositories) => T): T {
+  const repos = useRepositories();
+  const focused = useIsFocused();
+  const [version, setVersion] = useState(0);
+  const state = useRef({ focused, dirty: false });
+
+  useEffect(
+    () =>
+      repos.subscribe(() => {
+        if (state.current.focused) setVersion((v) => v + 1);
+        else state.current.dirty = true;
+      }),
+    [repos],
+  );
+  useEffect(() => {
+    state.current.focused = focused;
+    if (focused && state.current.dirty) {
+      state.current.dirty = false;
+      setVersion((v) => v + 1);
+    }
+  }, [focused]);
+
+  // `read` is a stable module-level reader at every call site; re-read only on data changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => read(repos), [repos, version]);
+}
+
+const readAllHistory = (r: Repositories) => r.sessions.history({ limit: ALL_HISTORY });
+
 /** Local data + account settings every progress screen needs. Pure calculations live in ./calc. */
 export function useProgressData() {
   const { state } = useAccount();
@@ -24,8 +65,8 @@ export function useProgressData() {
   const timezone = account?.settings.timezone ?? 'UTC';
   const goals: WeeklyGoal[] = useMemo(() => account?.goals ?? [], [account]);
 
-  const sessions = useLocalQuery((r) => r.sessions.history(), []);
-  const summary = useLocalQuery(readRewardSummary, []);
+  const sessions = useFocusedLocalQuery(readAllHistory);
+  const summary = useFocusedLocalQuery(readRewardSummary);
   const progression = useMemo(() => progressionView(summary, sessions), [summary, sessions]);
   const today = localDateIn(new Date(), timezone);
 

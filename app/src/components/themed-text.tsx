@@ -1,7 +1,18 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
 import { Fonts, ThemeColor } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+
+/** Accent text colors with >= 4.5:1 contrast on background and backgroundElement in each scheme (NFR-06). */
+export const AccentColors = {
+  light: { link: '#1A5FD0', error: '#C62828' },
+  dark: { link: '#6EA8FF', error: '#FF8A80' },
+} as const;
+
+export function useAccentColors() {
+  return AccentColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
+}
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
@@ -10,8 +21,10 @@ export type ThemedTextProps = TextProps & {
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  const accent = useAccentColors();
+  const color = type === 'linkPrimary' && !themeColor ? accent.link : theme[themeColor ?? 'text'];
 
-  return <Text style={[{ color: theme[themeColor ?? 'text'] }, styles[type], style]} {...rest} />;
+  return <Text style={[{ color }, styles[type], style]} {...rest} />;
 }
 
 const styles = StyleSheet.create({
@@ -47,7 +60,6 @@ const styles = StyleSheet.create({
   linkPrimary: {
     lineHeight: 30,
     fontSize: 14,
-    color: '#3c87f7',
   },
   code: {
     fontFamily: Fonts.mono,

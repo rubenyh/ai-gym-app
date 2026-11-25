@@ -19,6 +19,7 @@ import {
   UnavailableError,
   updatePostSnapshot,
   type Comment,
+  type PageCursor,
 } from './api';
 import { feedKey } from './feed-screen';
 import { routineFromSnapshot } from './snapshot';
@@ -38,8 +39,8 @@ export function PostScreen({ postId }: { postId: string }) {
   const comments = useInfiniteQuery({
     queryKey: [...postKey(postId), 'comments'],
     queryFn: ({ pageParam }) => getComments(postId, pageParam),
-    initialPageParam: null as string | null,
-    getNextPageParam: (last: Comment[]) => (last.length < PAGE_SIZE ? undefined : last[last.length - 1].createdAt),
+    initialPageParam: null as PageCursor,
+    getNextPageParam: (last: Comment[]) => (last.length < PAGE_SIZE ? undefined : { at: last[last.length - 1].createdAt, id: last[last.length - 1].id }),
     enabled: post.isSuccess,
   });
 
@@ -144,7 +145,17 @@ export function PostScreen({ postId }: { postId: string }) {
             @{c.handle}: {c.body}
           </ThemedText>
           {c.authorId === userId ? (
-            <Button label="Delete comment" variant="secondary" onPress={() => removeComment.mutate(c.id)} busy={removeComment.isPending} />
+            <Button
+              label="Delete comment"
+              variant="secondary"
+              busy={removeComment.isPending}
+              onPress={() =>
+                Alert.alert('Delete comment?', 'This cannot be undone.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => removeComment.mutate(c.id) },
+                ])
+              }
+            />
           ) : null}
         </View>
       ))}

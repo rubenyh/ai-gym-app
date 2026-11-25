@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-import { getFeed, PAGE_SIZE, type Post } from './api';
+import { getFeed, PAGE_SIZE, type PageCursor, type Post } from './api';
 import { Message, QueryState, SnapshotView, useMe } from './ui';
 
 export const feedKey = ['community', 'feed'] as const;
@@ -17,8 +17,8 @@ export function FeedScreen() {
   const feed = useInfiniteQuery({
     queryKey: feedKey,
     queryFn: ({ pageParam }) => getFeed(pageParam),
-    initialPageParam: null as string | null,
-    getNextPageParam: (last: Post[]) => (last.length < PAGE_SIZE ? undefined : last[last.length - 1].publishedAt),
+    initialPageParam: null as PageCursor,
+    getNextPageParam: (last: Post[]) => (last.length < PAGE_SIZE ? undefined : { at: last[last.length - 1].publishedAt, id: last[last.length - 1].id }),
   });
   const posts = feed.data?.pages.flat() ?? [];
 
@@ -77,6 +77,6 @@ const styles = StyleSheet.create({
   header: { padding: 16, gap: 8 },
   links: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
   link: { minHeight: 44, paddingVertical: 10 },
-  list: { padding: 16, gap: 12 },
+  list: { padding: 16, gap: 12, paddingBottom: 128 }, // room for the floating ActiveSessionBar
   card: { padding: 16, borderRadius: 12, gap: 8 },
 });

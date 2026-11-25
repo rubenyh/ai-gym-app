@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,27 +11,32 @@ import { Spacing } from '@/constants/theme';
 import { useLocalQuery } from '@/db/repositories-context';
 import type { ExerciseSummary } from '@/domain/repositories';
 
+const SEARCH_DEBOUNCE_MS = 200;
+/** Bounded result set: the FlatList virtualizes, the query never materializes the whole 1324-item catalog. */
+const RESULT_LIMIT = 100;
+
 /** Offline catalog search + filters (CAT-01). `onSelect` turns it into a picker. */
 export function CatalogBrowser({ onSelect, header }: { onSelect: (e: ExerciseSummary) => void; header?: ReactNode }) {
   const [query, setQuery] = useState('');
   const [muscle, setMuscle] = useState<string | null>(null);
   const [equipment, setEquipment] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const data = useLocalQuery(
-    (r) => ({
-      results: r.catalog.search(
-        { query: query.trim() || undefined, muscle: muscle ?? undefined, equipment: equipment ?? undefined, includeArchived: showArchived },
-        100,
+  const search = useDebounced(query.trim(), SEARCH_DEBOUNCE_MS);
+  // Facets scan json_each over the whole catalog: read them once, not on every keystroke.
+  const facets = useLocalQuery((r) => ({ muscles: r.catalog.muscles(), equipment: r.catalog.equipment() }), []);
+  const results = useLocalQuery(
+    (r) =>
+      r.catalog.search(
+        { query: search || undefined, muscle: muscle ?? undefined, equipment: equipment ?? undefined, includeArchived: showArchived },
+        RESULT_LIMIT,
       ),
-      muscles: r.catalog.muscles(),
-      equipment: r.catalog.equipment(),
-    }),
-    [query, muscle, equipment, showArchived],
+    [search, muscle, equipment, showArchived],
   );
+  const renderItem = useCallback(({ item }: { item: ExerciseSummary }) => <ExerciseRow exercise={item} onSelect={onSelect} />, [onSelect]);
 
   return (
     <FlatList
-      data={data.results}
+      data={results}
       keyExtractor={(e) => e.key}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.content}
@@ -39,8 +44,8 @@ export function CatalogBrowser({ onSelect, header }: { onSelect: (e: ExerciseSum
         <View style={styles.header}>
           {header}
           <TextField label="Search exercises" value={query} onChangeText={setQuery} placeholder="Name" autoCorrect={false} />
-          <ChipRow label="Muscle" options={data.muscles} value={muscle} onChange={setMuscle} />
-          <ChipRow label="Equipment" options={data.equipment} value={equipment} onChange={setEquipment} />
+          <ChipRow label="Muscle" options={facets.muscles} value={muscle} onChange={setMuscle} />
+          <ChipRow label="Equipment" options={facets.equipment} value={equipment} onChange={setEquipment} />
           <Row>
             <SmallButton
               label={showArchived ? 'Hide archived' : 'Show archived'}
@@ -53,12 +58,30 @@ export function CatalogBrowser({ onSelect, header }: { onSelect: (e: ExerciseSum
       ListEmptyComponent={
         <ThemedText themeColor="textSecondary">No exercises match. Clear a filter or create a custom exercise.</ThemedText>
       }
-      renderItem={({ item }) => <ExerciseRow exercise={item} onPress={() => onSelect(item)} />}
+      ListFooterComponent={
+        results.length === RESULT_LIMIT ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            Showing the first {RESULT_LIMIT} matches. Refine the search or filters to see more.
+          </ThemedText>
+        ) : undefined
+      }
+      renderItem={renderItem}
     />
   );
 }
 
-function ExerciseRow({ exercise, onPress }: { exercise: ExerciseSummary; onPress: () => void }) {
+/** Value that follows `value` after it stops changing for `ms` (catalog search keystrokes). */
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return debounced;
+}
+
+const ExerciseRow = memo(function ExerciseRow({ exercise, onSelect }: { exercise: ExerciseSummary; onSelect: (e: ExerciseSummary) => void }) {
+  const onPress = () => onSelect(exercise);
   const meta = [exercise.primaryMuscles.join(', '), exercise.equipment.join(', ')].filter(Boolean).join(' · ');
   const tags = [exercise.custom ? 'Custom' : null, exercise.archived ? 'Archived' : null].filter(Boolean).join(', ');
   return (
@@ -74,7 +97,7 @@ function ExerciseRow({ exercise, onPress }: { exercise: ExerciseSummary; onPress
       </ThemedView>
     </Pressable>
   );
-}
+});
 
 export function CatalogScreen() {
   return (

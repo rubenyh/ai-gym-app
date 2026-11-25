@@ -104,8 +104,13 @@ async function profilesById(ids: string[]): Promise<Map<string, { handle: string
 
 // ------------------------------------------------------------------ feed / posts
 
-export async function getFeed(before: string | null): Promise<Post[]> {
-  const rows = check(await db.rpc('get_feed', { p_before: before, p_limit: PAGE_SIZE }));
+/** Keyset cursor matching the server order (timestamp desc, id desc); a timestamp alone skips ties. */
+export type PageCursor = { at: string; id: string } | null;
+
+export async function getFeed(before: PageCursor): Promise<Post[]> {
+  const rows = check(
+    await db.rpc('get_feed', { p_before: before?.at ?? null, p_before_id: before?.id ?? null, p_limit: PAGE_SIZE }),
+  );
   return ((rows ?? []) as FeedRow[]).map((r) => toPost(r));
 }
 
@@ -201,14 +206,15 @@ export async function setLiked(postId: string, liked: boolean, userId: string) {
 
 // ------------------------------------------------------------------ comments
 
-export async function getComments(postId: string, before: string | null): Promise<Comment[]> {
+export async function getComments(postId: string, before: PageCursor): Promise<Comment[]> {
   let q = db
     .from('comments')
     .select('id, author_id, body, created_at')
     .eq('post_id', postId)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(PAGE_SIZE);
-  if (before) q = q.lt('created_at', before);
+  if (before) q = q.or(`created_at.lt."${before.at}",and(created_at.eq."${before.at}",id.lt.${before.id})`);
   const rows = check(await q) as { id: string; author_id: string; body: string; created_at: string }[];
   const authors = await profilesById(rows.map((r) => r.author_id));
   return rows.map((r) => ({

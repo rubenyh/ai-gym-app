@@ -140,6 +140,7 @@ export function ProgressScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: Spacing.four, gap: Spacing.three },
+  // Room for the floating ActiveSessionBar above the tab bar.
+  content: { padding: Spacing.four, gap: Spacing.three, paddingBottom: Spacing.six * 2 },
   link: { minHeight: 44, paddingVertical: Spacing.two },
 });

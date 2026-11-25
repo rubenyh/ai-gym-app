@@ -1,14 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { Alert } from 'react-native';
 
 import type { PostSnapshot } from '@/domain/contracts';
 import { ids, sessionFixture } from '@/domain/fixtures';
 
 import * as api from './api';
+import { ProfileScreen } from './people-screens';
 import { PostScreen } from './post-screen';
 import { PublishScreen } from './publish-screen';
 import { previewSnapshot, routineFromSnapshot } from './snapshot';
+import { PostPhoto } from './ui';
 
 jest.mock('@/services/supabase/client', () => ({ supabase: {} }));
 jest.mock('@react-native-community/netinfo', () => ({
@@ -44,6 +47,10 @@ jest.mock('./api', () => ({
   publishPost: jest.fn(),
   getPost: jest.fn(),
   getComments: jest.fn(async () => []),
+  getProfileCard: jest.fn(),
+  getAuthorPosts: jest.fn(async () => []),
+  blockUser: jest.fn(async () => undefined),
+  signedPhotoUrl: jest.fn(),
 }));
 
 const mocked = api as jest.Mocked<typeof api>;
@@ -128,5 +135,24 @@ describe('permissions', () => {
     await wrap(<PostScreen postId={ids.draft} />);
     expect(await screen.findByText(/This content is unavailable/)).toBeTruthy();
     expect(screen.queryByText('Copy to my routines')).toBeNull();
+  });
+});
+
+describe('controls and failure states', () => {
+  it('blocking asks for confirmation before calling the server', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mocked.getProfileCard.mockResolvedValue({ id: ids.userB, handle: 'bob', displayName: 'Bob', visibility: 'public', followStatus: 'none' } as never);
+    await wrap(<ProfileScreen handle="bob" />);
+    await fireEvent.press(await screen.findByText('Block'));
+    expect(mocked.blockUser).not.toHaveBeenCalled();
+    const block = alert.mock.calls[0][2]!.find((b) => b.text === 'Block')!;
+    await block.onPress!();
+    await waitFor(() => expect(mocked.blockUser).toHaveBeenCalledWith(ids.userB));
+  });
+
+  it('a photo whose signed URL cannot be created shows unavailable, not an endless placeholder', async () => {
+    mocked.signedPhotoUrl.mockRejectedValue(new Error('Network request failed'));
+    await render(<PostPhoto path="u/p.jpg" />);
+    expect(await screen.findByText('Photo unavailable')).toBeTruthy();
   });
 });

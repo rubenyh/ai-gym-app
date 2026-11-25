@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Button, FormMessage, FormScreen, TextField } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { friendlyError } from '@/features/account/errors';
+import { confirmDestructive } from '@/features/workouts/common';
 
 import {
   blockUser,
@@ -24,6 +25,9 @@ import {
 import { Message, QueryState, useMe } from './ui';
 
 const peopleKey = ['community', 'people'] as const;
+
+/** Destructive social actions are confirmed first (SOCIAL-04). */
+const BLOCK_MESSAGE = 'They will no longer see your posts or interact with you, and any follow between you is removed.';
 
 /** User search (SOCIAL-01): public identity only. */
 export function SearchScreen() {
@@ -104,7 +108,12 @@ export function ProfileScreen({ handle }: { handle: string }) {
           {status === 'blocked' ? (
             <Button label="Unblock" variant="secondary" busy={act.isPending} onPress={() => act.mutate(() => unblockUser(c.id))} />
           ) : (
-            <Button label="Block" variant="secondary" busy={act.isPending} onPress={() => act.mutate(() => blockUser(c.id))} />
+            <Button
+              label="Block"
+              variant="secondary"
+              busy={act.isPending}
+              onPress={() => confirmDestructive(`Block @${c.handle}?`, BLOCK_MESSAGE, 'Block', () => act.mutate(() => blockUser(c.id)))}
+            />
           )}
         </>
       ) : null}
@@ -147,14 +156,20 @@ export function ConnectionsScreen() {
     onSettled: () => qc.invalidateQueries({ queryKey: ['community'] }),
   });
 
-  const person = (p: PersonRow, actions: { label: string; run: () => Promise<unknown> }[]) => (
+  const person = (p: PersonRow, actions: { label: string; run: () => Promise<unknown>; confirm?: string }[]) => (
     <View key={p.id} style={styles.person}>
       <ThemedText>
         {p.displayName} @{p.handle}
       </ThemedText>
       <View style={styles.actions}>
         {actions.map((a) => (
-          <Button key={a.label} label={a.label} variant="secondary" busy={act.isPending} onPress={() => act.mutate(a.run)} />
+          <Button
+            key={a.label}
+            label={a.label}
+            variant="secondary"
+            busy={act.isPending}
+            onPress={() => (a.confirm ? confirmDestructive(`${a.label} @${p.handle}?`, a.confirm, a.label, () => act.mutate(a.run)) : act.mutate(a.run))}
+          />
         ))}
       </View>
     </View>
@@ -182,8 +197,8 @@ export function ConnectionsScreen() {
           {followers.data.followers.length === 0 ? <Message text="No followers yet." /> : null}
           {followers.data.followers.map((p) =>
             person(p, [
-              { label: 'Remove', run: () => removeFollower(p.id) },
-              { label: 'Block', run: () => blockUser(p.id) },
+              { label: 'Remove', run: () => removeFollower(p.id), confirm: 'They are removed from your followers and lose follower-only access.' },
+              { label: 'Block', run: () => blockUser(p.id), confirm: BLOCK_MESSAGE },
             ]),
           )}
         </>
