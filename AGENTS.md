@@ -28,17 +28,18 @@ reason recorded in `docs/DECISIONS.md`. Never present an open dependency as reso
 ```text
 app/                 Expo SDK 58 app (the only mobile app — never create a second one)
   src/app/           Expo Router routes: thin wrappers only
-  src/features/      planned: auth, workouts, coach, social, progress, gamification
-  src/db/            planned: SQLite schema, migrations, repositories (Drizzle)
-  src/services/      planned: sync worker, Supabase client, coach client
+  src/features/      auth, account (M1); planned: workouts, coach, social, progress, gamification
+  src/db/            per-account SQLite (Drizzle schema + migrations)
+  src/services/      Supabase client; planned: sync worker, coach client
   src/components/    shared UI and character wrappers
-supabase/            Supabase CLI project (config.toml; migrations/tests to be added)
+supabase/            Supabase CLI project: config.toml, migrations/, tests/database (pgTAP), tests/api
 services/coach-api/  planned: FastAPI + LangGraph coach service (does not exist yet)
 docs/                specifications
 ```
 
-`app/` has the M0 tab shell (placeholder screens) and a dev-only native verification route
-(`/dev/verify`); no product features yet. The earlier Flutter project was already removed from `app/`
+`app/` has the tab shell, auth/onboarding/settings (M1) and a dev-only native verification route
+(`/dev/verify`). Schema reference: [docs/DATA-DICTIONARY.md](docs/DATA-DICTIONARY.md),
+[docs/DB-DIAGRAM.md](docs/DB-DIAGRAM.md). The earlier Flutter project was already removed from `app/`
 in commit `fbc5047`; no Flutter migration remains.
 
 ## Commands (verified against this repository on 2026-11-25)
@@ -57,9 +58,13 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | Android dev build | `npm run android` (`expo run:android`) | **fails on this Windows machine** (path length, O-13); see [M0 status](docs/IMPLEMENTATION_PLAN.md#m0-status-2026-11-25) |
 | Dev server | `npx expo start` | serves the installed development build |
 | iOS dev build | `npm run ios` | **not verified**: needs macOS or EAS Build (open O-06) |
-| Local backend | `supabase start` (repo root) | needs Docker; not run |
-| DB permission tests | `supabase test db` (pgTAP) | subcommand exists; no tests yet |
-| DB lint | `supabase db lint` | subcommand exists; no migrations yet |
+| Local backend | `supabase start` (repo root) | works with Docker Desktop running (local stack only) |
+| Rebuild local DB | `supabase db reset --local` | applies `supabase/migrations/` from scratch; **local only** |
+| DB permission tests | `supabase test db` | passes (pgTAP, `supabase/tests/database/`) |
+| API isolation tests | `set -a; eval "$(supabase status -o env)"; set +a; node --test supabase/tests/api/*.test.mjs` | passes; refuses non-local URLs |
+| DB lint | `supabase db lint --local --level warning` | no errors |
+| DB types | `supabase gen types typescript --local --schema public > app/src/services/supabase/database.types.ts` | regenerate after each migration |
+| Local SQLite migrations | `npm run db:generate` (in `app/`) | Drizzle; regenerate after editing `app/src/db/schema.ts` |
 
 Update this table when a command is added or its status changes. Never document a command you have
 not run or confirmed exists.
@@ -126,6 +131,6 @@ duplicate coach approval, and invalid model output. Coverage percentages are not
 
 ## Out of bounds without explicit user approval
 
-Purchasing services, deploying, `eas submit`/`eas update`, publishing, deleting user data or source
+Applying migrations to a remote Supabase project (`supabase db push`, `supabase link`), purchasing services, deploying, `eas submit`/`eas update`, publishing, deleting user data or source
 directories, installing third-party plugins/MCP servers, or destructive database resets of non-local
 environments.

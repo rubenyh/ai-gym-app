@@ -17,7 +17,8 @@ Copy this entire `docs/` directory into the existing repository. These documents
 8. [Delivery plan](DELIVERY_PLAN.md): implementation sequence, checks, and remaining decisions.
 9. [Implementation plan](IMPLEMENTATION_PLAN.md): ordered milestones, dependencies, acceptance checks, blockers.
 10. [Decision log](DECISIONS.md): confirmed choices, implementation defaults, open dependencies.
-11. [Claude setup prompt](CLAUDE_SETUP_PROMPT.md): paste into Claude in the repository to establish development instructions and supporting documentation.
+11. [Data dictionary](DATA-DICTIONARY.md) and [database diagram](DB-DIAGRAM.md): implemented schema.
+12. [Claude setup prompt](CLAUDE_SETUP_PROMPT.md): paste into Claude in the repository to establish development instructions and supporting documentation.
 
 ## Decision status
 

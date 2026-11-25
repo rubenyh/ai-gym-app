@@ -2,8 +2,9 @@
 
 Derived from [DELIVERY_PLAN.md](DELIVERY_PLAN.md). Requirement IDs refer to [REQUIREMENTS.md](REQUIREMENTS.md);
 decision/blocker IDs (`O-xx`, `D-xx`) refer to [DECISIONS.md](DECISIONS.md). Status as of 2026-11-25:
-**M0 in progress** (code and automated checks done; Android native build blocked by O-13, see
-[M0 status](#m0-status-2026-11-25)); no product features; `supabase/` has only `config.toml`.
+**M0**: code and automated checks done; Android build/device verification **pending** (O-13, see
+[M0 status](#m0-status-2026-11-25)). **M1**: implemented and verified against the local Supabase stack; device
+verification pending with M0 (see [M1 status](#m1-status-2026-11-25)).
 
 ## Dependency graph
 
@@ -125,6 +126,51 @@ offline relaunch of a signed-in user reaches local data without a login loop; sw
 previous-account data.
 Blockers: **O-05**, **O-07** Google credentials (email/password not blocked).
 
+### M1 status (2026-11-25)
+
+**Implemented**
+- Server: migration `supabase/migrations/20261125120000_m1_identity_settings.sql` — `profiles`, `user_settings`,
+  `weekly_goals`, `training_profiles`, `body_weight_entries`, private `avatars` bucket; constraints, index, explicit
+  grants (none for `anon`), RLS on every table, frozen weekly-goal history, timezone change from next week, atomic
+  `complete_onboarding` and `schedule_weekly_goal` RPCs. Documented in [DATA-DICTIONARY.md](DATA-DICTIONARY.md)
+  and [DB-DIAGRAM.md](DB-DIAGRAM.md).
+- `supabase/config.toml`: `site_url = "aigym://"`, redirect allowlist `aigym://**`, email confirmations on, Google
+  provider block present but disabled (env references, O-07).
+- App: Supabase client (`app/src/services/supabase/`) with PKCE and chunked `expo-secure-store` session storage;
+  generated DB types; per-account SQLite file with Drizzle schema/migrations (`app/src/db/`); account provider and
+  route guards (signed-out → auth, no profile → onboarding, otherwise tabs; cached account opens offline);
+  sign-in, sign-up with email confirmation, password reset, `auth/callback` return route, Google OAuth action;
+  onboarding; Profile & settings (display name, visibility, units, timezone, weekly goal from next week, sign-out).
+
+**Checks run**
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Migration from scratch | `supabase db reset --local` (repo root) | pass |
+| Schema lint | `supabase db lint --local --level warning` | no errors |
+| Database permission tests | `supabase test db` | pass, 6 files / 60 assertions (two accounts, anon, frozen goals, RPC atomicity, storage folders) |
+| API isolation (PostgREST, RPC, Storage) | `set -a; eval "$(supabase status -o env)"; set +a; node --test supabase/tests/api/*.test.mjs` | pass, 6 tests |
+| Auth redirect allowlist | ad-hoc sign-up/reset against local stack, links read from Mailpit | `aigym://auth/callback` and `…?next=reset-password` accepted |
+| App typecheck / lint / unit tests | `npm run typecheck`, `npm run lint`, `npm test` (in `app/`) | pass; 6 suites / 32 tests (secure-storage chunking, account-state offline resolution, per-account DB isolation, validation) |
+
+Native config changed (`expo-secure-store` config plugin in `app.json`; new JS deps `@supabase/supabase-js`, `drizzle-orm`, `zod`): the next development build must include them. No native build was run this milestone.
+
+**Not verified (needs a device build, O-13):** screens and route guards on a device, secure-store persistence,
+email-link deep links into the app, offline relaunch, account switch on one device. Google sign-in is untestable
+until O-07. The device checklist for M1 is added to the M0 checklist run.
+
+**Deferred inside M1 scope (recorded, not dropped)**
+- Avatar picking/upload UI: storage and policies exist; picker needs `expo-image-picker` (native dependency) — add
+  with the next native build.
+- Training-profile form (PROFILE-01): table and RLS exist; form lands with the coach flow (M5), where it is first
+  required.
+- Settings and profile edits are online-only until the M3 outbox; offline they show the cached values and an error.
+- Sign-out pending-changes warning (NFR-08): nothing is pending before the M2 outbox; add the warning with it.
+
+M1 device checklist (with M0 checklist, after O-13): sign up → confirm link opens app → onboarding → Home; force-stop
+offline relaunch reaches Home; sign out, sign in as a second account → no first-account data; password reset link
+opens New password screen.
+
 ## M2 — Catalog and manual training (offline)
 
 **Requirements:** CAT-01, CAT-02, PLAN-01, SESSION-01..04, SETTINGS-01, NFR-01, NFR-02, NFR-03 (migrations).
@@ -233,5 +279,5 @@ Blockers: **O-10** reference devices; **O-11** only if external release is plann
 
 ## First concrete step
 
-Resolve **O-13** (Windows long paths, or build in WSL/EAS), then run `npm run android` and the M0 device
-checklist above. M1 schema/RLS work in `supabase/` does not depend on the native build and can start in parallel.
+Next milestone: **M2** (catalog and manual offline training). Start with O-02 (pin the exercise dataset commit)
+and the local training schema + outbox in `app/src/db/`. Device verification of M0/M1 still waits on O-13.

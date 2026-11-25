@@ -39,6 +39,15 @@ Engineering choices from the specs that are not independently user-confirmed. Ch
 | D-11 | Rive runtime `@rive-app/react-native` ~0.5.18 (new Nitro runtime, not legacy `rive-react-native`) with `react-native-nitro-modules` pinned to 0.36.5: Rive's peer range is `>=0.35.10 <0.37` and Rive docs require Nitro `>=0.36.2` on React Native 0.87+. Revisit when Rive widens the range. | Rive React Native docs, npm metadata, 2026-11-25 |
 | D-12 | Starter demo and web-only files removed by hand instead of `npm run reset-project` (the script moves all of `src/`, which would drop the theme and themed components). Web stays a non-target (C-01). | M0, 2026-11-25 |
 | D-13 | Jest: `jest-expo` preset + `react-native-reanimated/jest/resolver` + `setUpTests()`; React Native Testing Library 14 (async `render`/`fireEvent`). | M0, 2026-11-25 |
+| D-14 | Handle format `^[a-z0-9_]{3,30}$`, stored lowercase, unique. | M1, 2026-11-25 |
+| D-15 | New profiles default to **private** visibility (privacy-safe default; spec names no default). | M1, 2026-11-25 |
+| D-16 | Training profile `experience` enum `beginner/intermediate/advanced`; `goal` free text ≤ 200 chars (allowed goal values unspecified); sanity bounds age 1–120, height 50–272 cm, session 10–300 min, body weight 20–400 kg. Bounds are data validity, not eligibility (O-11). | M1, 2026-11-25 |
+| D-17 | Weekly goals are an append-forward table keyed by Monday; RLS freezes current/past weeks; a timezone change carries the next week's goal forward with the new zone (trigger). | [PROGRESS_AND_GAMIFICATION.md](PROGRESS_AND_GAMIFICATION.md#weekly-consistency), M1 |
+| D-18 | Onboarding is one transactional RPC (`complete_onboarding`) so partial accounts cannot exist. | M1, 2026-11-25 |
+| D-19 | Auth: PKCE flow, email confirmation required (local config), session in `expo-secure-store` split into ≤1000-char chunks; sign-out uses `scope: 'local'`. | [ARCHITECTURE.md](ARCHITECTURE.md#responsibilities), M1 |
+| D-20 | Avatars: private bucket `avatars`, 2 MiB, JPEG/PNG/WebP, `<uid>/` folders, readable by signed-in users. | M1, 2026-11-25 |
+| D-21 | React Hook Form not yet used: M1 forms are small and validated with Zod + local state. Adopt RHF with the larger routine/training-profile forms. | M1, 2026-11-25 |
+| D-22 | The device database is a read-through cache of server account rows in M1; server rows are authoritative until the M2/M3 outbox. | M1, 2026-11-25 |
 
 ## Open dependencies (unresolved — do not treat as decided)
 
@@ -50,10 +59,12 @@ Engineering choices from the specs that are not independently user-confirmed. Ch
 | O-04 | `@rive-app/react-native` + `react-native-nitro-modules` compatibility with Expo SDK 58 / RN 0.88.1. | M0 exit | Installed 0.5.18 + Nitro 0.36.5 (D-11): peers satisfied, `expo-doctor` clean, JS bundle builds. Native runtime unverified until an Android build succeeds (O-13). |
 | O-05 | App identity. **Provisional (user, 2026-11-25):** Android package and iOS bundle ID `com.rubenyh.aigym`, URL scheme `aigym`, name "AI Gym App", slug `ai-gym-app`. Final identifiers still open. | Store submission only | Confirm before any release. |
 | O-06 | iOS development-build path: local macOS/Xcode vs. EAS Build (needs an Expo account; free-tier limits apply). iOS config (bundle ID, scheme) is prepared; device/build verification is **pending**. | M0 iOS validation only (Android proceeds) | User decides; no purchase implied. |
-| O-07 | Google OAuth client IDs (Android/iOS/web) and consent-screen setup. | M1 Google sign-in | User creates credentials in Google Cloud; secrets stay server-side. |
+| O-07 | Google OAuth client IDs (Android/iOS/web) and consent-screen setup. Code path implemented, provider disabled in `supabase/config.toml`. | M1 Google sign-in verification | User creates credentials in Google Cloud; set `SUPABASE_AUTH_EXTERNAL_GOOGLE_*` in root `.env`, enable provider. |
 | O-08 | Gemini model choice, API key, operator budget cap. | M5 live integration (mocked provider not blocked) | Evaluate availability/cost/quality. |
 | O-09 | Coach API hosting and Python version. | M5 beyond local | Local FastAPI first. |
 | O-10 | Reference devices for NFR-01 performance target. | M7 performance claims | Name one Android and one iOS device. |
 | O-11 | Age eligibility, account deletion, reporting. | External release only | Decide before any public release. |
 | O-13 | Windows build environment: `LongPathsEnabled=0` makes native CMake/ninja steps fail (>260-char paths) in Reanimated and gesture-handler codegen. | M0 Android build on this machine | User enables long paths (admin) or builds in WSL/Linux or EAS. Details: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md#m0-status-2026-11-25). |
+| O-14 | Remote Supabase project (hosted) for device testing outside the local network, and its email (SMTP) settings. | Testing on a physical device away from this machine | Not needed for local emulator testing; no remote migrations applied. |
+| O-15 | Allowed values for training-profile `goal` and `equipment` (D-16 uses free text). | M5 coach inputs | Decide with the catalog import (M2) and coach contract (M5). |
 | O-12 | Supabase CLI upgrade (installed 2.75.0, latest 3.4.0). | Nothing yet | Upgrade before writing migrations if features require it. |
