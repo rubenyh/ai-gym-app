@@ -6,7 +6,6 @@
  */
 import type {
   BodyWeightDoc,
-  CatalogExercise,
   CoachApprovalDoc,
   CustomExerciseDoc,
   ExerciseKey,

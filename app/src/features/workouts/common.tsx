@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -23,7 +23,7 @@ export function SyncBadge({ meta }: { meta: SyncMeta | null | undefined }) {
       <SmallButton
         label="Needs review"
         accessibilityLabel="Sync conflict, needs review. Open sync status"
-        onPress={() => router.push('/sync-status' as Href)}
+        onPress={() => router.push('/sync-status')}
       />
     );
   }

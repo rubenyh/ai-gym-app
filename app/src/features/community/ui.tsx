@@ -31,9 +31,10 @@ export function QueryState({
   onRetry: () => void;
 }) {
   const net = useNetInfo();
-  if (loading) return <ActivityIndicator accessibilityLabel="Loading" style={styles.pad} />;
   if (error instanceof UnavailableError) return <Message text="This content is unavailable. It may have been deleted or made private." />;
+  // Checked before loading: offline queries pause, so a spinner would never end.
   if (net.isConnected === false) return <Message text="You are offline. Social features need a connection." onRetry={onRetry} />;
+  if (loading) return <ActivityIndicator accessibilityLabel="Loading" style={styles.pad} />;
   if (error) return <Message text={friendlyError(error)} onRetry={onRetry} />;
   return null;
 }

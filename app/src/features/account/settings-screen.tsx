@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
-import { Button, Choice, FormMessage, FormScreen, TextField } from '@/components/form';
+import { Button, Choice, FormMessage, FormScreen, linkTarget, TextField } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { useRepositories, useSyncEngine } from '@/db/repositories-context';
 import { supabase } from '@/services/supabase/client';
@@ -118,10 +118,10 @@ export function SettingsScreen() {
       ) : null}
       <ThemedText>@{account.profile.handle}</ThemedText>
       <AvatarPicker userId={account.profile.id} avatarPath={account.profile.avatarPath} onChanged={refresh} />
-      <Link href="/coach-draft/profile" accessibilityRole="button">
+      <Link href="/coach-draft/profile" accessibilityRole="button" style={linkTarget}>
         <ThemedText type="linkPrimary">Training profile (private)</ThemedText>
       </Link>
-      <Link href="/sync-status" accessibilityRole="button">
+      <Link href="/sync-status" accessibilityRole="button" style={linkTarget}>
         <ThemedText type="linkPrimary">Sync status</ThemedText>
       </Link>
       <TextField label="Display name" value={displayName} onChangeText={setDisplayName} />

@@ -1,4 +1,4 @@
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 
 import { Button, FormMessage, TextField } from '@/components/form';
@@ -54,8 +54,7 @@ export function SessionStats({ session, unit }: { session: SessionDoc; unit: Wei
 }
 
 export function publishHref(sessionId: string) {
-  // Route owned by the community feature.
-  return `/social/publish/${sessionId}` as Href;
+  return { pathname: '/social/publish/[sessionId]', params: { sessionId } } as const;
 }
 
 /** Post-finish summary (SESSION-04). Publishing is offered, never automatic. */

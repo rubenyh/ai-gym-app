@@ -1,7 +1,7 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 
-import { Button, FormMessage, FormScreen, TextField } from '@/components/form';
+import { Button, FormMessage, FormScreen, linkTarget, TextField } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { friendlyError } from '@/features/account/errors';
 import { emailSchema, passwordSchema } from '@/features/account/validation';
@@ -58,8 +58,8 @@ export function SignInScreen() {
       <Button label="Sign in" onPress={submit} busy={busy} />
       <Button label="Continue with Google" variant="secondary" busy={busy}
         onPress={() => run(async () => void (await signInWithGoogle()))} />
-      <Link href="/forgot-password"><ThemedText type="linkPrimary">Forgot password?</ThemedText></Link>
-      <Link href="/sign-up"><ThemedText type="linkPrimary">Create an account</ThemedText></Link>
+      <Link href="/forgot-password" style={linkTarget}><ThemedText type="linkPrimary">Forgot password?</ThemedText></Link>
+      <Link href="/sign-up" style={linkTarget}><ThemedText type="linkPrimary">Create an account</ThemedText></Link>
     </FormScreen>
   );
 }
@@ -90,7 +90,7 @@ export function SignUpScreen() {
       <FormMessage text={error} />
       <FormMessage text={info} tone="info" />
       <Button label="Create account" onPress={submit} busy={busy} />
-      <Link href="/sign-in"><ThemedText type="linkPrimary">I already have an account</ThemedText></Link>
+      <Link href="/sign-in" style={linkTarget}><ThemedText type="linkPrimary">I already have an account</ThemedText></Link>
     </FormScreen>
   );
 }

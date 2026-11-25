@@ -2,10 +2,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import type { SessionDoc } from '@/domain/contracts';
-import type { RestTimer } from '@/domain/repositories';
+import type { Repositories, RestTimer } from '@/domain/repositories';
 import { GRAMS_PER_LB } from '@/domain/units';
 
 import { REPS_REQUIRED } from './common';
+import { readHistoryPages } from './history-screen';
 import { LoggerScreen } from './logger-screen';
 import { WorkoutsHome } from './workouts-home';
 
@@ -82,6 +83,8 @@ jest.mock('@/db/repositories-context', () => ({
 jest.mock('@/features/account/account-provider', () => ({
   useAccount: () => ({ state: { kind: 'ready', account: { settings: { weightUnit: mockState.unit } } } }),
 }));
+jest.mock('@/features/community/api', () => ({ deletePost: jest.fn(), findPostsForSession: jest.fn() }));
+jest.mock('@/features/progress/summary-rewards', () => ({ SummaryRewards: () => null }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), navigate: jest.fn() } }));
 
 beforeEach(() => {
@@ -146,5 +149,20 @@ describe('WorkoutsHome', () => {
     expect(alert).toHaveBeenCalledWith('Workout in progress', expect.any(String), expect.any(Array));
     const buttons = alert.mock.calls[0][2]!.map((b) => b.text);
     expect(buttons).toEqual(expect.arrayContaining(['Resume', 'Discard']));
+  });
+});
+
+describe('readHistoryPages', () => {
+  it('follows the completedAt cursor across pages', () => {
+    const all = Array.from({ length: 45 }, (_, i) => ({ id: String(i), completedAt: new Date(T0 - i * 60_000).toISOString() }));
+    const history = jest.fn(({ limit, before }: { limit: number; before?: string }) =>
+      all.filter((s) => !before || s.completedAt < before).slice(0, limit),
+    );
+    const repos = { sessions: { history } } as unknown as Repositories;
+    expect(readHistoryPages(repos, 1)).toMatchObject({ hasMore: true });
+    const two = readHistoryPages(repos, 2);
+    expect(two.hasMore).toBe(false);
+    expect(two.sessions.map((s) => s.id)).toEqual(all.map((s) => s.id));
+    expect(history).toHaveBeenLastCalledWith({ limit: 30, before: all[29].completedAt });
   });
 });

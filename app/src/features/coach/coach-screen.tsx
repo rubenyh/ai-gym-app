@@ -1,3 +1,4 @@
+import { useNetInfo } from '@react-native-community/netinfo';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 import { router } from 'expo-router';
@@ -28,6 +29,7 @@ export function CoachScreen() {
 function CoachHome() {
   const { state } = useAccount();
   const userId = state.kind === 'ready' ? state.userId : null;
+  const offline = useNetInfo().isConnected === false;
   const active = useLocalQuery((r) => r.programs.active(), []);
   const profile = useQuery({ queryKey: profileKey, queryFn: () => fetchTrainingProfile(userId!), enabled: !!userId });
   const missing = profile.data !== undefined ? missingProfileFields(profile.data) : [];
@@ -78,7 +80,8 @@ function CoachHome() {
 
   const send = (extra?: string) => {
     const body = extra ? `${text.trim()}\n${extra}` : text.trim();
-    if (body) submit.mutate(body.slice(0, 1000));
+    // Offline mutations pause (spinner forever); the offline notice explains instead.
+    if (body && !offline) submit.mutate(body.slice(0, 1000));
   };
 
   if (!coachApiUrl()) {
@@ -91,11 +94,20 @@ function CoachHome() {
 
   return (
     <FormScreen title="Coach">
+      <FormMessage
+        tone="info"
+        text={offline ? 'You are offline. The coach needs a connection; your routines and workouts keep working offline.' : null}
+      />
       <ThemedText type="small">Describe what you want. The coach creates a draft; nothing changes until you approve it.</ThemedText>
       <Card>
         <ThemedText type="smallBold">Training profile</ThemedText>
         {profile.isLoading ? <ActivityIndicator accessibilityLabel="Loading profile" /> : null}
-        {profile.error ? <FormMessage text="Could not load your training profile." /> : null}
+        {profile.error ? (
+          <>
+            <FormMessage text="Could not load your training profile." />
+            <Button label="Retry" variant="secondary" onPress={() => profile.refetch()} />
+          </>
+        ) : null}
         {profile.data !== undefined ? (
           <ThemedText type="small">
             {missing.length ? `Missing: ${missing.join(', ')}` : 'Complete'}

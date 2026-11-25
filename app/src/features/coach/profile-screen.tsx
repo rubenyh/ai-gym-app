@@ -33,7 +33,8 @@ function Loader() {
   const userId = state.kind === 'ready' ? state.userId : null;
   const query = useQuery({ queryKey: profileKey, queryFn: () => fetchTrainingProfile(userId!), enabled: !!userId });
   if (query.isLoading) return <FormScreen title="Training profile"><ThemedText>Loading…</ThemedText></FormScreen>;
-  if (query.error || !userId) {
+  // A paused (offline) query has no data: never show an empty form that could overwrite the stored profile.
+  if (query.error || !userId || (query.data === undefined && query.isPaused)) {
     return (
       <FormScreen title="Training profile">
         <FormMessage text="Could not load your training profile. Check your connection." />

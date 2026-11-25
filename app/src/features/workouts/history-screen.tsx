@@ -8,18 +8,31 @@ import { Card, Row, Screen, SectionTitle, SmallButton } from '@/components/ui/la
 import { ThemedText } from '@/components/themed-text';
 import { useLocalQuery, useRepositories } from '@/db/repositories-context';
 import { sessionDoc, type PerformedSet, type SessionDoc } from '@/domain/contracts';
-import type { SyncMeta } from '@/domain/repositories';
+import type { Repositories, SyncMeta } from '@/domain/repositories';
 import { deletePost, findPostsForSession } from '@/features/community/api';
 
 import { errorMessage, formatClock, REPS_REQUIRED, sessionStats, SyncBadge, useWeightUnit } from './common';
 import { SetRow } from './set-row';
 import { publishHref, SessionStats } from './summary-screen';
 
-const HISTORY_LIMIT = 100;
+const PAGE_SIZE = 30;
+
+/** Pages through history with the completedAt cursor; re-reads all loaded pages after each write. */
+export function readHistoryPages(r: Repositories, pages: number) {
+  const sessions: (SessionDoc & SyncMeta)[] = [];
+  let before: string | undefined;
+  for (let i = 0; i < pages; i++) {
+    const page = r.sessions.history({ limit: PAGE_SIZE, before });
+    sessions.push(...page);
+    if (page.length < PAGE_SIZE) return { sessions, hasMore: false };
+    before = page[page.length - 1].completedAt ?? undefined;
+  }
+  return { sessions, hasMore: true };
+}
 
 export function HistoryScreen() {
-  // ponytail: first 100 workouts only; add `before` cursor paging when history grows past that.
-  const sessions = useLocalQuery((r) => r.sessions.history({ limit: HISTORY_LIMIT }), []);
+  const [pages, setPages] = useState(1);
+  const { sessions, hasMore } = useLocalQuery((r) => readHistoryPages(r, pages), [pages]);
   return (
     <Screen>
       {sessions.length === 0 ? <ThemedText themeColor="textSecondary">No finished workouts yet.</ThemedText> : null}
@@ -43,6 +56,7 @@ export function HistoryScreen() {
           </Pressable>
         );
       })}
+      {hasMore ? <Button label="Load more" variant="secondary" onPress={() => setPages((n) => n + 1)} /> : null}
     </Screen>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import { Button, FormScreen, TextField } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
@@ -69,7 +69,7 @@ export function BodyWeightScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Edit entry from ${e.measuredAt.slice(0, 10)}`}
-                style={{ minHeight: 44, justifyContent: 'center' }}
+                style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
                 onPress={() => {
                   setEditing({ id: e.id, measuredAt: e.measuredAt });
                   setText(formatWeight(e.weightGrams, unit, false));
@@ -79,8 +79,13 @@ export function BodyWeightScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Delete entry from ${e.measuredAt.slice(0, 10)}`}
-                style={{ minHeight: 44, justifyContent: 'center' }}
-                onPress={() => repos.bodyWeight.delete(e.id)}>
+                style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
+                onPress={() =>
+                  Alert.alert('Delete entry?', 'This body-weight measurement will be removed from your history.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => repos.bodyWeight.delete(e.id) },
+                  ])
+                }>
                 <ThemedText type="linkPrimary">Delete</ThemedText>
               </Pressable>
             </View>

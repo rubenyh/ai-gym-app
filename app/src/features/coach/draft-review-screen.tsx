@@ -40,7 +40,7 @@ function DraftLoader({ draftId }: { draftId: string }) {
   if (!query.data) {
     return (
       <FormScreen title="Coach draft">
-        <FormMessage text={query.error instanceof Error ? query.error.message : 'Could not load the draft.'} />
+        <FormMessage text={query.error instanceof Error ? query.error.message : query.isPaused ? 'You are offline. The coach needs a connection.' : 'Could not load the draft.'} />
         <Button label="Try again" onPress={() => query.refetch()} />
       </FormScreen>
     );

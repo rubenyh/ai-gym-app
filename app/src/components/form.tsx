@@ -129,3 +129,6 @@ const styles = StyleSheet.create({
   button: { minHeight: 48, borderRadius: Spacing.three, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.three },
   error: { color: '#C62828' },
 });
+
+/** Padding that gives inline text links a 44pt touch target (NFR-06). */
+export const linkTarget = { paddingVertical: 12 } as const;
