@@ -1,5 +1,3 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { ProgressScreen } from '@/features/progress/progress-screen';
 
-export default function ProgressScreen() {
-  return <PlaceholderScreen title="Progress" milestone="M4 (progress and gamification)" />;
-}
+export default ProgressScreen;
