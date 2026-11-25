@@ -13,6 +13,7 @@ import type {
   LoadMode,
   OutboxStatus,
   ProgramDoc,
+  RewardSummary,
   RoutineDoc,
   SessionDoc,
 } from './contracts';
@@ -125,6 +126,8 @@ export type Repositories = {
   sessions: SessionRepository;
   bodyWeight: BodyWeightRepository;
   outbox: OutboxRepository;
+  /** Last server reward summary (written by the sync worker after push/pull; display only). */
+  rewardCache: { get(): RewardSummary | null; set(summary: RewardSummary): void };
   /** Notifies after any committed local write or applied pull page. Returns unsubscribe. */
   subscribe(listener: () => void): () => void;
 };

@@ -7,7 +7,7 @@ contract only by editing the code **and** this page in the same commit.
 | --- | --- |
 | Aggregate documents, exercise keys, units, push/pull/receipt shapes, reward summary, coach draft, post snapshot | [`app/src/domain/contracts.ts`](../app/src/domain/contracts.ts) (Zod) |
 | Representative fixtures | [`app/src/domain/fixtures.ts`](../app/src/domain/fixtures.ts) |
-| Local repository interface + transaction boundaries | [`app/src/domain/repositories.ts`](../app/src/domain/repositories.ts) |
+| Local repository interface + transaction boundaries | [`app/src/domain/repositories.ts`](../app/src/domain/repositories.ts) (incl. `rewardCache`, 2026-11-25). Implementation `app/src/db/repositories/`; the sync worker additionally uses `LocalRepositories.sync` (internal, not for feature UI). UI imports `RepositoriesProvider`, `useRepositories`, `useLocalQuery`, `useSyncEngine` from `@/db/repositories-context`. |
 | Reward numbers (D-03), rule version 1 | [`app/src/domain/reward-rules.v1.json`](../app/src/domain/reward-rules.v1.json); SQL mirrors it, an API test compares them |
 
 ## Fixed semantics

@@ -8,6 +8,13 @@
       "when": 1795633477856,
       "tag": "0000_m1_account_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795635324988,
+      "tag": "0001_m2_training_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { drizzle, type ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { deleteDatabaseSync, openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
 import migrations from './migrations/migrations';
 import * as schema from './schema';
@@ -33,4 +33,18 @@ export async function closeAccountDb(): Promise<void> {
   const open = current;
   current = null;
   await open?.sqlite.closeAsync();
+}
+
+/** The already-open database of the account (opened by the account provider), or null. */
+export function getOpenAccountDb(userId: string): AccountDb | null {
+  return current?.userId === userId ? current.db : null;
+}
+
+/**
+ * Explicit discard on sign-out (NFR-08): deletes this account's local file, including unsynced
+ * changes. The next sign-in re-hydrates from the server.
+ */
+export async function deleteAccountDb(userId: string): Promise<void> {
+  if (current?.userId === userId) await closeAccountDb();
+  deleteDatabaseSync(accountDatabaseName(userId));
 }
