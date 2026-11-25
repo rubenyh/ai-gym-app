@@ -1,0 +1,15 @@
+appId: com.rubenyh.aigym
+---
+- launchApp
+- tapOn: "Coach"
+- tapOn: "Edit training profile"
+- tapOn: "Save profile"
+- tapOn: "Your request"
+- inputText: "Three days, prioritize back"
+- tapOn: "Generate draft"
+- extendedWaitUntil:
+    visible: "Review draft"
+    timeout: 95000
+- tapOn: "Review draft"
+- tapOn: "Approve and activate"
+- assertVisible: "Pending sync|Active program.*"

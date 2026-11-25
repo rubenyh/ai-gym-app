@@ -1,0 +1,16 @@
+appId: com.rubenyh.aigym
+# Precondition: a completed, synced workout exists (02 + 03).
+---
+- launchApp
+- tapOn: "Workouts"
+- tapOn: "History"
+- tapOn:
+    index: 0
+    text: ".*"
+- tapOn: "Publish to community"
+- assertNotVisible: "private note.*"
+- tapOn: "Caption (optional)"
+- inputText: "Smoke test"
+- tapOn: "Publish"
+- tapOn: "Community"
+- assertVisible: "Smoke test"

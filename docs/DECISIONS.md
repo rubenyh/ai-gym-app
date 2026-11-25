@@ -51,13 +51,17 @@ Engineering choices from the specs that are not independently user-confirmed. Ch
 | D-23 | Sync unit is the aggregate document (contracts in [CONTRACTS.md](CONTRACTS.md)); server stores typed root columns + validated `doc jsonb` for children; one op per `sync_push` call; per-account change `seq` under a row lock. | M2–M3, 2026-11-25 |
 | D-24 | Batched native/JS deps for M2–M7: `expo-crypto` (UUIDs), `expo-image-picker` (avatar/post photo), `@react-native-community/netinfo`, `@tanstack/react-query`; dev-only `better-sqlite3` to run repository/migration tests on real SQLite. Zustand, React Hook Form, Lottie and haptics not added: no current need (D-21). | M2, 2026-11-25 |
 | D-25 | Post snapshots are built server-side from the synced session (`publish_post`), so a modified client cannot publish private fields. Publishing therefore requires the session to be synced first. | M6, 2026-11-25 |
+| D-26 | Server sync/coach/social details recorded in [CONTRACTS.md](CONTRACTS.md#server-rules-added-during-implementation-2026-11-25): strict document keys, receipts for applied ops only, coach approval as a `sync_push` op. | M3–M6, 2026-11-25 |
+| D-27 | Pet stage = 1-based index into `petStageLevels`; stage 1 unlocks with the first reward summary. A new weight PR must exceed the previous best by more than `repPrToleranceGrams` (50 g) so kg↔lb re-entry never creates a PR. First log of an exercise is not a PR. | M4, 2026-11-25 |
+| D-28 | Identity and preference edits (profile, units, timezone, weekly goal) stay online-only with server rows authoritative (D-22); only training aggregates and body weight use the outbox. Offline, settings show cached values with an explicit message. | M3, 2026-11-25 |
+| D-29 | A pulled change that fails local validation/constraints is skipped with a visible sync error while the cursor advances; the server copy remains authoritative and returns on a full re-sync. | M3, 2026-11-25 |
 
 ## Open dependencies (unresolved — do not treat as decided)
 
 | ID | Item | Blocks | Next step |
 | --- | --- | --- | --- |
 | O-01 | Exercise images/GIFs rights (Gym Visual media is not covered by the dataset MIT license). | Media in catalog (not metadata) | Use placeholders; seek rights or alternative assets. |
-| O-02 | Dataset commit to pin and actual JSON schema. | M2 catalog import | Inspect repo, pin commit, record count. |
+| O-02 | ~~Dataset commit to pin~~ **Resolved 2026-11-25:** `hasaneyldrm/exercises-dataset@7455efae41b330c265e7cd4b78dfa848e7ce5ebd`, 1324 entries, metadata/instructions only ([attribution](../app/assets/catalog/ATTRIBUTION.md)). | — | Re-run `node scripts/import-exercises.mjs <clone>` to update. |
 | O-03 | Pet and coach Rive assets, character personality, final branding and visuals. | M4 final visuals (placeholder allowed) | Create/choose authorized assets. |
 | O-04 | `@rive-app/react-native` + `react-native-nitro-modules` compatibility with Expo SDK 58 / RN 0.88.1. | M0 exit | Installed 0.5.18 + Nitro 0.36.5 (D-11): peers satisfied, `expo-doctor` clean, JS bundle builds. Native runtime unverified until an Android build succeeds (O-13). |
 | O-05 | App identity. **Provisional (user, 2026-11-25):** Android package and iOS bundle ID `com.rubenyh.aigym`, URL scheme `aigym`, name "AI Gym App", slug `ai-gym-app`. Final identifiers still open. | Store submission only | Confirm before any release. |

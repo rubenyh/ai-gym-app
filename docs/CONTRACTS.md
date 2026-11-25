@@ -48,10 +48,21 @@ contract only by editing the code **and** this page in the same commit.
 | `respond_follow_request(p_requester uuid, p_accept boolean)`, `remove_follower(p_follower uuid)`, `unfollow_user(p_target uuid)`, `block_user(p_target uuid)`, `unblock_user(p_target uuid)` | Actor = `auth.uid()`. Blocking deletes follows both ways. |
 | `search_profiles(p_query text, p_limit int)`, `get_profile_card(p_handle text)` | Public identity only + caller's `FollowStatus`. |
 | `get_feed(p_before timestamptz, p_limit int)` | Accessible posts from followed authors (and own), newest first. |
-| Coach tables `coach_requests`, `coach_drafts` | Owner-read via RLS; written only by the coach service with the **user's** token through `coach_create_request`/`coach_save_draft` RPCs (no service-role key). Approval arrives as a `coach_approval` push op. |
+| Coach tables `coach_requests`, `coach_drafts` | Owner-read via RLS; written only by the coach service with the **user's** token through `coach_begin_request` (returns `{created, draft}`, rate limit raises `PT429`), `coach_save_draft`, `coach_cancel_draft`, `coach_get_context` (no service-role key). Approval arrives as a `coach_approval` push op. |
 
 ## Coach HTTP API (owner: coach agent)
 
 `POST /v1/coach/drafts` (`CoachDraftRequest` → `CoachDraftResponse`), `GET /v1/coach/drafts/{id}`,
 `POST /v1/coach/drafts/{id}/cancel`. `Authorization: Bearer <Supabase access token>`; server verifies via
 Supabase Auth and reads context with the same user token (RLS), never a client-supplied owner.
+
+## Server rules added during implementation (2026-11-25)
+
+- Documents must contain exactly the contract keys at every level (unknown keys are rejected).
+- `coach_approval`: `aggregateId` must equal `approvalId`; the program must be `active` with `coachDraftId = draftId`.
+- Only `applied` results are stored as receipts; `conflict`/`rejected` are re-evaluated when resent.
+- Pushing an active program deactivates the previous one (new revision + change-log entry).
+- A delete for an aggregate the server never stored returns `applied` (revision 1) and stores nothing.
+- Server weekly bonus places a session by `completedAt` in that week's frozen goal timezone; the client's
+  provisional view uses the stored `localDate`. They differ only for sessions completed near midnight after a
+  timezone change, and the server value wins once synced.

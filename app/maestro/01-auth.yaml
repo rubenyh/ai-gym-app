@@ -1,0 +1,12 @@
+appId: com.rubenyh.aigym
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${EMAIL}
+- tapOn: "Password"
+- inputText: ${PASSWORD}
+- tapOn: "Sign in"
+- assertVisible: "Start empty workout"
+- tapOn: "Profile & settings"
+- assertVisible: "Sign out"

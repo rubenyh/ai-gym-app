@@ -1,0 +1,20 @@
+appId: com.rubenyh.aigym
+# Precondition: signed in once online (01-auth), then airplane mode ON.
+---
+- launchApp
+- tapOn: "Start empty workout"
+- tapOn: "Add exercise"
+- tapOn: "Search exercises"
+- inputText: "bench"
+- tapOn:
+    text: ".*Bench Press.*"
+    index: 0
+- tapOn: "Reps"
+- inputText: "8"
+- tapOn: "Complete set"
+- stopApp
+- launchApp
+- assertVisible: "Resume workout"
+- tapOn: "Resume workout"
+- assertVisible: "8"
+- assertVisible: "Rest.*"

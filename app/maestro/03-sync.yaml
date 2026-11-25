@@ -1,0 +1,10 @@
+appId: com.rubenyh.aigym
+# Precondition: 02 finished offline; re-enable the network before running.
+---
+- launchApp
+- tapOn: "Profile & settings"
+- tapOn: "Sync status"
+- tapOn: "Sync now"
+- extendedWaitUntil:
+    visible: "0 pending.*"
+    timeout: 30000
