@@ -28,16 +28,18 @@ reason recorded in `docs/DECISIONS.md`. Never present an open dependency as reso
 ```text
 app/                 Expo SDK 58 app (the only mobile app — never create a second one)
   src/app/           Expo Router routes: thin wrappers only
-  src/features/      auth, account (M1); planned: workouts, coach, social, progress, gamification
+  src/features/      auth, account, catalog, workouts, sync, progress, gamification, coach, community
   src/db/            per-account SQLite (Drizzle schema + migrations)
-  src/services/      Supabase client; planned: sync worker, coach client
+  src/services/      Supabase client, sync worker, coach client, query provider
+  src/domain/        frozen shared contracts (docs/CONTRACTS.md)
+  maestro/           device smoke flows (prepared, not executed)
   src/components/    shared UI and character wrappers
 supabase/            Supabase CLI project: config.toml, migrations/, tests/database (pgTAP), tests/api
-services/coach-api/  planned: FastAPI + LangGraph coach service (does not exist yet)
+services/coach-api/  FastAPI + LangGraph coach service (Python 3.12, venv in .venv)
 docs/                specifications
 ```
 
-`app/` has the tab shell, auth/onboarding/settings (M1) and a dev-only native verification route
+`app/` implements M0–M7 code paths (see [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md#m2m7-status-2026-11-25)) plus a dev-only native verification route
 (`/dev/verify`). Schema reference: [docs/DATA-DICTIONARY.md](docs/DATA-DICTIONARY.md),
 [docs/DB-DIAGRAM.md](docs/DB-DIAGRAM.md). The earlier Flutter project was already removed from `app/`
 in commit `fbc5047`; no Flutter migration remains.
@@ -65,6 +67,10 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | DB lint | `supabase db lint --local --level warning` | no errors |
 | DB types | `supabase gen types typescript --local --schema public > app/src/services/supabase/database.types.ts` | regenerate after each migration |
 | Local SQLite migrations | `npm run db:generate` (in `app/`) | Drizzle; regenerate after editing `app/src/db/schema.ts` |
+| Catalog import | `node scripts/import-exercises.mjs <clone-of-exercises-dataset>` (in `app/`) | writes `assets/catalog/exercises.v1.json` (metadata only, pinned SHA in ATTRIBUTION.md) |
+| Sync end-to-end | `set -a; eval "$(supabase status -o env)"; set +a; npm run test:integration` (in `app/`) | passes, 7 tests; real engine + repositories vs local stack; refuses non-local URLs |
+| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per its README) | passes; integration test runs only when local Supabase env vars are exported |
+| Kong after reset | `docker restart supabase_kong_ai-gym-app` | needed when Storage/REST return 502 after `supabase db reset` (CLI 2.75) |
 
 Update this table when a command is added or its status changes. Never document a command you have
 not run or confirmed exists.

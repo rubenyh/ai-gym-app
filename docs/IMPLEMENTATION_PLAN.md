@@ -1,7 +1,7 @@
 # Implementation plan
 
 Derived from [DELIVERY_PLAN.md](DELIVERY_PLAN.md). Requirement IDs refer to [REQUIREMENTS.md](REQUIREMENTS.md);
-decision/blocker IDs (`O-xx`, `D-xx`) refer to [DECISIONS.md](DECISIONS.md). Status as of 2026-11-25:
+decision/blocker IDs (`O-xx`, `D-xx`) refer to [DECISIONS.md](DECISIONS.md). Status as of 2026-11-25 (M2–M7 summary: [M2–M7 status](#m2m7-status-2026-11-25)):
 **M0**: code and automated checks done; Android build/device verification **pending** (O-13, see
 [M0 status](#m0-status-2026-11-25)). **M1**: implemented and verified against the local Supabase stack; device
 verification pending with M0 (see [M1 status](#m1-status-2026-11-25)).
@@ -22,6 +22,43 @@ M0 Toolchain & native spike
 M5 and M6 can proceed in parallel once M3 is done. Do not start social features before sync fixtures exist (M3).
 
 ---
+
+## M2–M7 status (2026-11-25)
+
+All DAG tasks T1–T12 are implemented, integrated and committed. **Nothing has run on a device** (O-13): every
+device-dependent acceptance criterion below stays open.
+
+| Milestone | Code | Automated verification | Device / external |
+| --- | --- | --- | --- |
+| M0 | done | app checks pass | Android/iOS build pending (O-13, O-06) |
+| M1 | done; avatar upload + pending-changes sign-out warning added | pgTAP, API isolation | device checklist pending; Google untestable (O-07) |
+| M2 | catalog (1324 pinned entries, no media), custom exercises, routines, programs, sessions, logger, rest deadline, history, save-as-routine | real-SQLite repository + migration-upgrade tests | force-close recovery on device pending |
+| M3 | server aggregates + `sync_push`/`sync_pull`, client worker, conflicts UI, status screen | pgTAP 07, end-to-end `test:integration` (7) | foreground/reconnect triggers on device pending; hosted Supabase O-14 |
+| M4 | metrics, PR rules, consistency, body weight, server rewards/badges/pet, Home/Progress/achievements, placeholder pet (Rive + static) | calc fixtures, pgTAP 08, reward-rules parity API test | final art O-03; Rive on device pending |
+| M5 | coach service (LangGraph, one repair, limits), coach tables/RPCs, approval via sync, profile/request/review/approve UI | pytest 31 + gated end-to-end test, pgTAP 09, RNTL | live Gemini O-08; hosting O-09 |
+| M6 | follows/blocks/posts/likes/comments, private photos, server-built snapshots, feed/search/profiles/post/copy/publish UI | pgTAP 10, API isolation, RNTL | photo picker/upload on device pending |
+| M7 | route wiring, offline/error/retry states, a11y pass, root QueryProvider, Maestro flows | full suites below | Maestro flows never executed; NFR-01 profiling needs O-10 |
+
+Final checks (2026-11-25, from a clean `supabase db reset --local`):
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck`, `npm run lint` (app) | pass, 0 problems |
+| `npm test` (app) | 19 suites / 113 tests pass; 1 integration suite skipped by design |
+| `npm run test:integration` (app, local stack) | 7 / 7 pass |
+| `supabase db lint --local --level warning` | no schema errors |
+| `supabase test db` | 10 files / 180 assertions pass |
+| `node --test supabase/tests/api/*.test.mjs` | 12 / 12 pass |
+| coach `pytest` (local env exported) | 32 pass (31 unit/evaluation + 1 end-to-end) |
+| Not run (per session rules) | native builds, `expo export`, `expo-doctor`, Maestro, live Gemini |
+
+Known limits (recorded, not hidden): identity/preference edits are online-only (D-28); a pulled change failing
+local validation is skipped with a visible error (D-29); history paging uses a strict `before` timestamp, so two
+workouts finished in the same millisecond at a page boundary can be skipped; like counts are computed client-side.
+
+**Next device checkpoint (single native build):** this build adds `expo-crypto`, `expo-image-picker` (photos
+permission only), `@react-native-community/netinfo` to the M0/M1 natives. After O-13: `npm run android`, then run
+the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../app/maestro/README.md)).
 
 ## Execution DAG (2026-11-25, M2–M7 session)
 
@@ -318,5 +355,5 @@ Blockers: **O-10** reference devices; **O-11** only if external release is plann
 
 ## First concrete step
 
-Next milestone: **M2** (catalog and manual offline training). Start with O-02 (pin the exercise dataset commit)
-and the local training schema + outbox in `app/src/db/`. Device verification of M0/M1 still waits on O-13.
+All milestones are code-complete. The next step is the device checkpoint above (needs O-13 or an EAS/Linux build),
+then O-08 (Gemini model/key) for live coach evaluation.
