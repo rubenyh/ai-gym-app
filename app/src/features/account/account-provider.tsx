@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 
-import { closeAccountDb, openAccountDb } from '@/db/account-db';
+import { closeAccountDb, deleteAccountDb, openAccountDb } from '@/db/account-db';
 import { supabase } from '@/services/supabase/client';
 
 import { cacheAccount, fetchRemoteAccount, readCachedAccount } from './account-data';
@@ -11,7 +11,11 @@ type AccountContextValue = {
   state: AccountState;
   /** Re-reads the account from the server and refreshes the local cache. */
   refresh: () => Promise<void>;
-  signOut: () => Promise<void>;
+  /**
+   * Signs out of this device. Callers must first warn about unsynced changes (NFR-08, settings screen);
+   * `discard: true` deletes this account's local database including unsynced changes.
+   */
+  signOut: (options?: { discard?: boolean }) => Promise<void>;
 };
 
 const AccountContext = createContext<AccountContextValue | null>(null);
@@ -72,12 +76,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (userId !== undefined) setLoaded({ userId, state: await loadAccountState(userId) });
   }, [userId]);
 
-  const signOut = useCallback(async () => {
-    // No outbox exists before M2, so there are no pending changes to warn about yet (NFR-08).
-    // 'local' clears this device's session even when the network is down.
-    await supabase.auth.signOut({ scope: 'local' });
-    await closeAccountDb();
-  }, []);
+  const signOut = useCallback(
+    async (options?: { discard?: boolean }) => {
+      // 'local' clears this device's session even when the network is down. Without an explicit discard
+      // the account file (and its outbox) stays on the device and syncs on the next sign-in.
+      await supabase.auth.signOut({ scope: 'local' });
+      if (options?.discard && userId) await deleteAccountDb(userId);
+      else await closeAccountDb();
+    },
+    [userId],
+  );
 
   return <AccountContext value={{ state, refresh, signOut }}>{children}</AccountContext>;
 }

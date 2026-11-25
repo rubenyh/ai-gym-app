@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { RepositoriesProvider } from '@/db/repositories-context';
 import { AccountProvider, useAccount } from '@/features/account/account-provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -12,7 +13,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AccountProvider>
-        <RootStack />
+        <RepositoriesProvider>
+          <RootStack />
+        </RepositoriesProvider>
       </AccountProvider>
     </ThemeProvider>
   );
