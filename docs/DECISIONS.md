@@ -48,6 +48,9 @@ Engineering choices from the specs that are not independently user-confirmed. Ch
 | D-20 | Avatars: private bucket `avatars`, 2 MiB, JPEG/PNG/WebP, `<uid>/` folders, readable by signed-in users. | M1, 2026-11-25 |
 | D-21 | React Hook Form not yet used: M1 forms are small and validated with Zod + local state. Adopt RHF with the larger routine/training-profile forms. | M1, 2026-11-25 |
 | D-22 | The device database is a read-through cache of server account rows in M1; server rows are authoritative until the M2/M3 outbox. | M1, 2026-11-25 |
+| D-23 | Sync unit is the aggregate document (contracts in [CONTRACTS.md](CONTRACTS.md)); server stores typed root columns + validated `doc jsonb` for children; one op per `sync_push` call; per-account change `seq` under a row lock. | M2–M3, 2026-11-25 |
+| D-24 | Batched native/JS deps for M2–M7: `expo-crypto` (UUIDs), `expo-image-picker` (avatar/post photo), `@react-native-community/netinfo`, `@tanstack/react-query`; dev-only `better-sqlite3` to run repository/migration tests on real SQLite. Zustand, React Hook Form, Lottie and haptics not added: no current need (D-21). | M2, 2026-11-25 |
+| D-25 | Post snapshots are built server-side from the synced session (`publish_post`), so a modified client cannot publish private fields. Publishing therefore requires the session to be synced first. | M6, 2026-11-25 |
 
 ## Open dependencies (unresolved — do not treat as decided)
 

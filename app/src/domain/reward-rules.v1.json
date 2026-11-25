@@ -1,0 +1,18 @@
+{
+  "ruleVersion": 1,
+  "sessionCompletionXp": 100,
+  "weeklyGoalXp": 100,
+  "levelBaseXp": 200,
+  "levelStepXp": 50,
+  "petStageLevels": [1, 5, 10, 20],
+  "badges": [
+    { "id": "first_workout", "kind": "qualifying_sessions", "threshold": 1 },
+    { "id": "workouts_10", "kind": "qualifying_sessions", "threshold": 10 },
+    { "id": "workouts_25", "kind": "qualifying_sessions", "threshold": 25 },
+    { "id": "workouts_50", "kind": "qualifying_sessions", "threshold": 50 },
+    { "id": "workouts_100", "kind": "qualifying_sessions", "threshold": 100 },
+    { "id": "first_weekly_goal", "kind": "achieved_weeks", "threshold": 1 },
+    { "id": "four_week_streak", "kind": "consecutive_achieved_weeks", "threshold": 4 }
+  ],
+  "repPrToleranceGrams": 50
+}

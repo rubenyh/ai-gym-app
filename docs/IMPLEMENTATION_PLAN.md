@@ -23,6 +23,45 @@ M5 and M6 can proceed in parallel once M3 is done. Do not start social features 
 
 ---
 
+## Execution DAG (2026-11-25, M2–M7 session)
+
+Contracts are frozen in [CONTRACTS.md](CONTRACTS.md). Tasks run in parallel as soon as prerequisites are done;
+a task counts as integrated only against its real dependency. One owner per path; the lead owns
+`app/package.json`, lockfile, `app/app.json`, `app/src/domain/*`, root navigation and consolidated docs.
+
+```mermaid
+flowchart TD
+  T0["T0 contracts + batched deps (lead)"] --> T1["T1 catalog import + local schema/repositories/outbox (data)"]
+  T0 --> T2["T2 server training schema + sync RPCs + rewards (backend)"]
+  T0 --> T5["T5 coach service (coach)"]
+  T0 --> T6["T6 social schema/RPCs/storage (backend, after T2)"]
+  T1 --> T3["T3 workout/catalog/logger screens (workouts UI)"]
+  T1 --> T4["T4 client sync worker + status/conflicts (data)"]
+  T2 --> T4
+  T1 --> T7["T7 progress calculations (progress)"]
+  T2 --> T8["T8 reward summary client + pet (progress)"]
+  T7 --> T9["T9 Home/Progress/achievements/body weight (progress)"]
+  T8 --> T9
+  T3 --> T10["T10 coach app + approval (coach)"]
+  T4 --> T10
+  T5 --> T10
+  T3 --> T11["T11 publication + community UI (community)"]
+  T4 --> T11
+  T6 --> T11
+  T3 & T4 & T9 & T10 & T11 --> T12["T12 integration, M1 leftovers (avatar, sign-out warning), docs, final checks (lead)"]
+```
+
+| Task | Milestone | Requirements | Owner paths |
+| --- | --- | --- | --- |
+| T1 | M2 | CAT-01/02, PLAN-01, SESSION-01..04, NFR-02/03 | `app/src/db/**`, `app/scripts/**`, `app/assets/catalog/**` |
+| T2, T6 | M3, M4, M6 | SYNC-01, GAME-01, SOCIAL-01..05, NFR-04 | `supabase/**` |
+| T3 | M2 | CAT-01/02, PLAN-01, SESSION-01..04 | `app/src/features/{catalog,workouts}/**`, their routes |
+| T4 | M3 | SYNC-01, AUTH-02, NFR-08/09 | `app/src/services/sync/**`, `app/src/features/sync/**` |
+| T5, T10 | M5 | COACH-01/02, PROFILE-01, NFR-05/10 | `services/coach-api/**`, `app/src/features/coach/**` |
+| T7–T9 | M4 | PROGRESS-01, GAME-01/02, NFR-11 | `app/src/features/{progress,gamification}/**`, `app/src/components/characters/**` |
+| T11 | M6 | SOCIAL-01..05 | `app/src/features/community/**` |
+| T12 | M1, M7 | AUTH/PROFILE leftovers, NFR-06/08/09 | lead |
+
 ## M0 — Toolchain and native compatibility spike
 
 **Requirements:** NFR-07, NFR-12. **Depends on:** nothing.
