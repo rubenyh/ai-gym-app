@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 
 import { RepositoriesProvider } from '@/db/repositories-context';
 import { AccountProvider, useAccount } from '@/features/account/account-provider';
+import { QueryProvider } from '@/services/query-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -12,11 +13,13 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AccountProvider>
-        <RepositoriesProvider>
-          <RootStack />
-        </RepositoriesProvider>
-      </AccountProvider>
+      <QueryProvider>
+        <AccountProvider>
+          <RepositoriesProvider>
+            <RootStack />
+          </RepositoriesProvider>
+        </AccountProvider>
+      </QueryProvider>
     </ThemeProvider>
   );
 }

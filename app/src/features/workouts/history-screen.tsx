@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable } from 'react-native';
+import { Alert, Pressable } from 'react-native';
 
 import { Button, FormMessage, TextField } from '@/components/form';
 import { Card, Row, Screen, SectionTitle, SmallButton } from '@/components/ui/layout';
@@ -9,8 +9,9 @@ import { ThemedText } from '@/components/themed-text';
 import { useLocalQuery, useRepositories } from '@/db/repositories-context';
 import { sessionDoc, type PerformedSet, type SessionDoc } from '@/domain/contracts';
 import type { SyncMeta } from '@/domain/repositories';
+import { deletePost, findPostsForSession } from '@/features/community/api';
 
-import { confirmDestructive, errorMessage, formatClock, REPS_REQUIRED, sessionStats, SyncBadge, useWeightUnit } from './common';
+import { errorMessage, formatClock, REPS_REQUIRED, sessionStats, SyncBadge, useWeightUnit } from './common';
 import { SetRow } from './set-row';
 import { publishHref, SessionStats } from './summary-screen';
 
@@ -89,21 +90,14 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
         <Button
           label="Delete workout"
           variant="secondary"
-          onPress={() =>
-            confirmDestructive(
-              'Delete workout?',
-              'Progress and rewards are recalculated. Published posts are not deleted automatically; delete them from Community.',
-              'Delete',
-              () => {
-                try {
-                  repos.sessions.delete(sessionId);
-                  router.back();
-                } catch (e) {
-                  setError(errorMessage(e));
-                }
-              },
-            )
-          }
+          onPress={() => confirmDeleteSession(sessionId, () => {
+            try {
+              repos.sessions.delete(sessionId);
+              router.back();
+            } catch (e) {
+              setError(errorMessage(e));
+            }
+          })}
         />
         <FormMessage text={error} />
       </Screen>
@@ -192,5 +186,45 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
         <SmallButton label="Cancel editing" onPress={() => (setDraft(null), setError(null))} />
       </Row>
     </Screen>
+  );
+}
+
+/**
+ * SOCIAL-05: deleting a source workout never silently deletes its posts. If posts exist (checked online,
+ * before the server unlinks them), offer keep-post or delete-both; offline falls back to a plain warning.
+ */
+async function confirmDeleteSession(sessionId: string, deleteSession: () => void) {
+  let posts: { id: string; photoPath: string | null }[] = [];
+  try {
+    posts = await findPostsForSession(sessionId);
+  } catch {
+    // Offline or not signed in: posts cannot be checked now; the generic warning still applies.
+  }
+  if (posts.length === 0) {
+    Alert.alert(
+      'Delete workout?',
+      'Progress and rewards are recalculated. Published posts are not deleted automatically; delete them from Community.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: deleteSession },
+      ],
+    );
+    return;
+  }
+  Alert.alert(
+    'This workout is published',
+    `${posts.length === 1 ? 'A post' : `${posts.length} posts`} use this workout. Posts are independent copies and stay public unless you delete them too.`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Keep post, delete workout', onPress: deleteSession },
+      {
+        text: 'Delete both',
+        style: 'destructive',
+        onPress: async () => {
+          await Promise.allSettled(posts.map((p) => deletePost(p)));
+          deleteSession();
+        },
+      },
+    ],
   );
 }

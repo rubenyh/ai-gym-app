@@ -9,7 +9,7 @@ import { Spacing } from '@/constants/theme';
 /**
  * Coach requests are online-only (TanStack Query, never a training cache). One client shared by the coach
  * tab and the coach-draft stack so a draft fetched on one screen is reused on the other.
- * ponytail: feature-local client because the root has no QueryClientProvider; drop this once the root mounts one.
+ * ponytail: separate from the root QueryProvider; fold into it (useQueryClient) if coach and social ever share queries.
  */
 export const coachQueryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } });
 

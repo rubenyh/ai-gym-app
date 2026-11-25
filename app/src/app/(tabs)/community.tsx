@@ -1,5 +1,3 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { FeedScreen } from '@/features/community/feed-screen';
 
-export default function CommunityScreen() {
-  return <PlaceholderScreen title="Community" milestone="M6 (social)" />;
-}
+export default FeedScreen;
