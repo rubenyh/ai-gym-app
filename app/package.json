@@ -61,6 +61,7 @@
     "lint": "expo lint",
     "typecheck": "expo customize tsconfig.json && tsc --noEmit",
     "test": "jest",
+    "test:integration": "jest --config jest.integration.config.js --runInBand",
     "db:generate": "drizzle-kit generate"
   },
   "private": true,
