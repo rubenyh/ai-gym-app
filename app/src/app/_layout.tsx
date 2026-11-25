@@ -32,6 +32,12 @@ function RootStack() {
       <Stack.Protected guard={kind === 'ready'}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        {/* Feature stacks; each directory owns its _layout.tsx (docs/IMPLEMENTATION_PLAN.md execution DAG). */}
+        <Stack.Screen name="training" options={{ headerShown: false }} />
+        <Stack.Screen name="insights" options={{ headerShown: false }} />
+        <Stack.Screen name="coach-draft" options={{ headerShown: false }} />
+        <Stack.Screen name="social" options={{ headerShown: false }} />
+        <Stack.Screen name="sync-status" options={{ title: 'Sync status' }} />
       </Stack.Protected>
       {/* While loading, the splash screen covers this group. */}
       <Stack.Protected guard={kind === 'signed-out' || kind === 'loading'}>
