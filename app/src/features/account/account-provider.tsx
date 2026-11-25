@@ -1,0 +1,83 @@
+import type { Session } from '@supabase/supabase-js';
+import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
+
+import { closeAccountDb, openAccountDb } from '@/db/account-db';
+import { supabase } from '@/services/supabase/client';
+
+import { cacheAccount, fetchRemoteAccount, readCachedAccount } from './account-data';
+import { resolveAccountState, type AccountState } from './account-state';
+
+type AccountContextValue = {
+  state: AccountState;
+  /** Re-reads the account from the server and refreshes the local cache. */
+  refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
+};
+
+const AccountContext = createContext<AccountContextValue | null>(null);
+
+export function useAccount(): AccountContextValue {
+  const value = use(AccountContext);
+  if (!value) throw new Error('useAccount must be used inside AccountProvider');
+  return value;
+}
+
+async function loadAccountState(userId: string | null): Promise<AccountState> {
+  if (!userId) {
+    await closeAccountDb();
+    return { kind: 'signed-out' };
+  }
+  const db = await openAccountDb(userId);
+  const cached = await readCachedAccount(db);
+  try {
+    const account = await fetchRemoteAccount(userId);
+    if (account) await cacheAccount(db, account);
+    return resolveAccountState(userId, cached, { ok: true, account });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Server unreachable';
+    return resolveAccountState(userId, cached, { ok: false, message });
+  }
+}
+
+export function AccountProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  // Keyed by account so a switch shows 'loading' instead of the previous account's state.
+  const [loaded, setLoaded] = useState<{ userId: string | null; state: AccountState } | null>(null);
+  const userId = session === undefined ? undefined : (session?.user.id ?? null);
+  const state: AccountState =
+    loaded && userId !== undefined && loaded.userId === userId ? loaded.state : { kind: 'loading' };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  // Reload only when the signed-in account changes, not on every token refresh.
+  useEffect(() => {
+    if (userId === undefined) return;
+    let cancelled = false;
+    loadAccountState(userId)
+      .catch((e): AccountState =>
+        // Local database failure: surface it with a retry instead of an endless splash screen.
+        userId ? { kind: 'offline', userId, message: String(e) } : { kind: 'signed-out' },
+      )
+      .then((next) => !cancelled && setLoaded({ userId, state: next }));
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const refresh = useCallback(async () => {
+    if (userId !== undefined) setLoaded({ userId, state: await loadAccountState(userId) });
+  }, [userId]);
+
+  const signOut = useCallback(async () => {
+    // No outbox exists before M2, so there are no pending changes to warn about yet (NFR-08).
+    // 'local' clears this device's session even when the network is down.
+    await supabase.auth.signOut({ scope: 'local' });
+    await closeAccountDb();
+  }, []);
+
+  return <AccountContext value={{ state, refresh, signOut }}>{children}</AccountContext>;
+}
