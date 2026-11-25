@@ -1,7 +1,7 @@
 -- Private data (settings, training profile, body weight) is invisible and immutable to other users.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(19);
 
 insert into auth.users (id, email) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'a@test.local'),
@@ -28,22 +28,25 @@ select throws_ok(
   $$update public.training_profiles set available_weekdays = '{0,8}'$$,
   '23514', null, 'weekdays must be ISO 1-7'
 );
-select lives_ok(
-  $$insert into public.body_weight_entries (id, measured_at, weight_grams)
-    values ('cccccccc-0000-4000-8000-000000000003', '2026-11-20T08:00:00Z', 80500)$$,
-  'A records body weight with client-generated id'
+select is(
+  public.sync_push('{"opId":"cccccccc-0000-4000-8000-0000000000a1","aggregateType":"body_weight",
+    "aggregateId":"cccccccc-0000-4000-8000-000000000003","action":"upsert","baseRevision":null,
+    "doc":{"id":"cccccccc-0000-4000-8000-000000000003","measuredAt":"2026-11-20T08:00:00Z","weightGrams":80500}}') ->> 'status',
+  'applied', 'A records body weight with client-generated id (through sync_push)'
 );
 select throws_ok(
-  $$insert into public.body_weight_entries (measured_at, weight_grams) values (now(), 5)$$,
-  '23514', null, 'implausible body weight rejected'
+  $$insert into public.body_weight_entries (measured_at, weight_grams) values (now(), 80000)$$,
+  '42501', null, 'direct body weight insert is denied (writes go through sync_push)'
 );
 select throws_ok(
   $$update public.body_weight_entries set owner_id = 'bbbbbbbb-0000-4000-8000-000000000002'$$,
   '42501', null, 'body weight owner is not updatable'
 );
-select lives_ok(
-  $$update public.body_weight_entries set weight_grams = 80000 where id = 'cccccccc-0000-4000-8000-000000000003'$$,
-  'A edits own measurement value'
+select is(
+  public.sync_push('{"opId":"cccccccc-0000-4000-8000-0000000000a2","aggregateType":"body_weight",
+    "aggregateId":"cccccccc-0000-4000-8000-000000000003","action":"upsert","baseRevision":1,
+    "doc":{"id":"cccccccc-0000-4000-8000-000000000003","measuredAt":"2026-11-20T08:00:00Z","weightGrams":80000}}') ->> 'revision',
+  '2', 'A edits own measurement value'
 );
 
 -- B attacks A's data
@@ -63,8 +66,8 @@ select throws_ok(
   $$insert into public.training_profiles (owner_id, goal) values ('aaaaaaaa-0000-4000-8000-000000000001', 'x')$$,
   '42501', null, 'B cannot create a training profile for A'
 );
-update public.body_weight_entries set weight_grams = 1 where true;
-delete from public.body_weight_entries where true;
+select throws_ok('update public.body_weight_entries set weight_grams = 1 where true', '42501', null, 'B cannot update body weight');
+select throws_ok('delete from public.body_weight_entries where true', '42501', null, 'B cannot delete body weight');
 update public.training_profiles set limitations = 'tampered' where true;
 update public.user_settings set weight_unit = 'lb' where true;
 
