@@ -52,13 +52,14 @@ export async function fetchRemoteAccount(userId: string): Promise<AccountSnapsho
 
 /** Replaces the local cache with the server snapshot in one transaction. */
 export async function cacheAccount(db: AccountDb, snapshot: AccountSnapshot): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx.delete(accountProfile);
-    await tx.insert(accountProfile).values(snapshot.profile);
-    await tx.delete(userSettings);
-    await tx.insert(userSettings).values({ id: 1, ...snapshot.settings });
-    await tx.delete(weeklyGoals);
-    if (snapshot.goals.length) await tx.insert(weeklyGoals).values(snapshot.goals);
+  // expo-sqlite's Drizzle transaction is synchronous: an async callback would let writes escape it.
+  db.transaction((tx) => {
+    tx.delete(accountProfile).run();
+    tx.insert(accountProfile).values(snapshot.profile).run();
+    tx.delete(userSettings).run();
+    tx.insert(userSettings).values({ id: 1, ...snapshot.settings }).run();
+    tx.delete(weeklyGoals).run();
+    if (snapshot.goals.length) tx.insert(weeklyGoals).values(snapshot.goals).run();
   });
 }
 
