@@ -23,7 +23,7 @@ class DataError(Exception):
 class CoachData(Protocol):
     async def get_context(self) -> dict: ...
     async def begin_request(self, request_id: str, mode: str, program_id: str | None,
-                            base_revision: int | None, input: dict) -> dict: ...
+                            base_revision: int | None, input: dict, hourly_limit: int, daily_cap: int) -> dict: ...
     async def save_draft(self, draft_id: str, status: str, content: dict | None, clarification: dict | None,
                          error: dict | None, model: str) -> dict: ...
     async def cancel_draft(self, draft_id: str) -> dict: ...
@@ -60,21 +60,31 @@ class SupabaseData:
             raise DataError(503, "data_unreachable", "Could not reach the database.") from e
         if r.status_code >= 400:
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
-            # PT429 -> HTTP 429 (rate limit), P0002 -> 404. Never echo the request payload.
+            # PT429 -> HTTP 429 (rate_limited | budget_exhausted), P0002 -> 404. Never echo the request payload.
             code = {429: "rate_limited", 404: "not_found"}.get(r.status_code, "data_error")
-            message = {429: "Too many coach requests. Try again later.", 404: "Not found."}.get(
-                r.status_code, str(body.get("message", "Database error.")))
+            if code == "rate_limited" and body.get("message") == "budget_exhausted":
+                code = "budget_exhausted"
+            message = {
+                "rate_limited": "Too many coach requests. Try again later.",
+                "budget_exhausted": "The coach has reached today's request budget. Try again tomorrow.",
+                "not_found": "Not found.",
+            }.get(code, str(body.get("message", "Database error.")))
             raise DataError(r.status_code, code, message)
         return r.json()
 
     async def get_context(self) -> dict:
         return await self._rpc("coach_get_context", {})
 
-    async def begin_request(self, request_id, mode, program_id, base_revision, input) -> dict:
-        """RPC returns {created, draft: CoachDraftResponse}; flattened to {...draft, created}."""
+    async def begin_request(self, request_id, mode, program_id, base_revision, input, hourly_limit, daily_cap) -> dict:
+        """RPC returns {created, draft: CoachDraftResponse}; flattened to {...draft, created}.
+
+        Both limits are enforced atomically in the database (20261125200000_coach_hardening.sql), so they hold
+        across service processes. The database only lets the hourly limit be lowered (max 10/hour).
+        """
         r = await self._rpc("coach_begin_request", {
             "p_request_id": request_id, "p_mode": mode, "p_program_id": program_id,
             "p_base_revision": base_revision, "p_input": input,
+            "p_hourly_limit": hourly_limit, "p_daily_cap": daily_cap,
         })
         return {**r["draft"], "created": r["created"]}
 

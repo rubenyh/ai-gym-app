@@ -124,6 +124,17 @@ describe('draft review (COACH-02)', () => {
     expect(mockRepos.programs.applyCoachApproval).not.toHaveBeenCalled();
   });
 
+  it.each(['cancelled', 'failed', 'pending'] as const)('never offers approval for a %s draft', async (status) => {
+    client.getDraft.mockResolvedValue({ ...readyDraft, status, error: null });
+    if (status === 'pending') client.getDraft.mockResolvedValue({ ...readyDraft, status, draft: null });
+    await render(<DraftReviewScreen />);
+    const shown = { cancelled: 'This draft was cancelled. Nothing changed.', failed: 'This draft cannot be reviewed.', pending: null }[status];
+    if (shown) expect(await screen.findByText(shown)).toBeTruthy();
+    else expect(await screen.findByLabelText('Loading draft')).toBeTruthy();
+    expect(screen.queryByText('Approve and activate')).toBeNull();
+    expect(mockRepos.programs.applyCoachApproval).not.toHaveBeenCalled();
+  });
+
   it('blocks approval of a stale draft', async () => {
     mockRepos.programs.active.mockReturnValue({ id: 'cccccccc-0000-4000-8000-000000000001', name: 'Mine', days: [], serverRevision: 4 });
     client.getDraft.mockResolvedValue({ ...readyDraft, baseProgramId: 'cccccccc-0000-4000-8000-000000000001', baseProgramRevision: 3 });
@@ -166,6 +177,23 @@ describe('coach request (COACH-01)', () => {
     const [a, b] = client.createDraft.mock.calls.map((c) => c[0]);
     expect(a.requestId).toBe(b.requestId);
     expect(mockRepos.programs.applyCoachApproval).not.toHaveBeenCalled();
+  });
+
+  it('reuses the request ID after a server timeout (504) and resets it after a 429 limit', async () => {
+    client.createDraft.mockRejectedValueOnce(new CoachApiError('timeout', 'The coach took too long. Try again.', true, 504));
+    client.createDraft.mockRejectedValueOnce(new CoachApiError('rate_limited', 'Too many coach requests.', true, 429));
+    client.createDraft.mockResolvedValueOnce(readyDraft);
+    await render(<CoachScreen />);
+    await fireEvent.changeText(screen.getByLabelText('Your request'), 'Two days');
+    await fireEvent.press(screen.getByText('Generate draft'));
+    await fireEvent.press(await screen.findByText('Try again'));
+    expect(await screen.findByText('Too many coach requests.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(await screen.findByText('Review draft')).toBeTruthy();
+    const [a, b, c] = client.createDraft.mock.calls.map((x) => x[0]);
+    expect(a.requestId).toBe(b.requestId);
+    expect(c.requestId).not.toBe(b.requestId);
+    expect(screen.getByLabelText('Your request').props.value).toBe('Two days');
   });
 
   it('shows a clarification as one focused question', async () => {

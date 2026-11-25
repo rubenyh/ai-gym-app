@@ -32,6 +32,17 @@ pytestmark = pytest.mark.skipif(
 )
 
 RUN = format(int(time.time() * 1000), "x")
+CREATED: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def delete_test_users():
+    """Remove created users (cascades to profiles/drafts/programs) so pgTAP counts stay valid."""
+    yield
+    admin = {"apikey": SERVICE, "Authorization": f"Bearer {SERVICE}"}
+    with httpx.Client(timeout=20) as http:
+        while CREATED:
+            http.delete(f"{URL}/auth/v1/admin/users/{CREATED.pop()}", headers=admin)
 
 
 def nid() -> str:
@@ -45,6 +56,8 @@ class User:
         r = http.post(f"{URL}/auth/v1/admin/users", headers=admin,
                       json={"email": email, "password": password, "email_confirm": True})
         r.raise_for_status()
+        self.id = r.json()["id"]
+        CREATED.append(self.id)
         r = http.post(f"{URL}/auth/v1/token", params={"grant_type": "password"}, headers={"apikey": ANON},
                       json={"email": email, "password": password})
         r.raise_for_status()
@@ -157,3 +170,62 @@ def test_coach_flow_against_local_supabase():
         assert statuses[-1].status_code == 429, [s.status_code for s in statuses]
         assert statuses[-1].json()["code"] == "rate_limited"
         assert all(s.status_code == 200 for s in statuses[:10])
+
+
+def _profile(http: httpx.Client, user: User, label: str):
+    user.rpc("complete_onboarding", {"p_handle": f"coach_{label}_{RUN}"[:30], "p_display_name": "Coach",
+                                     "p_weight_unit": "kg", "p_length_unit": "cm",
+                                     "p_timezone": "Europe/Madrid", "p_target_days": 3})
+    r = http.post(f"{URL}/rest/v1/training_profiles", headers=user.headers, json={
+        "goal": "general fitness", "experience": "beginner", "equipment": [],
+        "available_weekdays": [1, 3, 5], "session_minutes": 60})
+    assert r.status_code < 400, r.text
+
+
+def test_concurrent_duplicate_and_cancel_during_generation():
+    """Two simultaneous POSTs with one requestId -> one draft, one model run. Cancel while generating -> the late
+    result is discarded by coach_save_draft and the response reports the stored (cancelled) state."""
+    import asyncio
+
+    catalog = load_catalog(DEFAULT_CATALOG)
+    keys = [k for k, e in catalog.items() if e.load_mode == "bodyweight" and e.equipment == ("body weight",)][:2]
+    plan = draft({1: [ex(keys[0])], 3: [ex(keys[1])]})
+    provider = ScriptedProvider(interpret=[("sleep", 1.0), ("sleep", 1.0)], generate=[plan, plan])
+    settings = replace(BASE_SETTINGS, supabase_url=URL, supabase_anon_key=ANON, timeout_seconds=30)
+    app = create_app(settings=settings, provider=provider, catalog=catalog)
+
+    with httpx.Client(timeout=20) as http:
+        c = User(http, "c")
+        _profile(http, c, "c")
+
+        async def scenario():
+            auth = {"Authorization": f"Bearer {c.token}"}
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t", timeout=30) as api:
+                def post(rid):
+                    return api.post("/v1/coach/drafts", headers=auth, json={
+                        "requestId": rid, "mode": "create", "programId": None, "baseRevision": None,
+                        "preferencesText": "Full body"})
+
+                rid = nid()
+                a, b = await asyncio.gather(post(rid), post(rid))
+                assert a.status_code == b.status_code == 200
+                assert a.json()["draftId"] == b.json()["draftId"]
+                assert {a.json()["status"], b.json()["status"]} <= {"ready", "pending"}
+                assert provider.count("interpret") == 1
+
+                rid2 = nid()
+                task = asyncio.create_task(post(rid2))
+                await asyncio.sleep(0.4)  # provider is "thinking"
+                rows = http.get(f"{URL}/rest/v1/coach_drafts", headers=c.headers,
+                                params={"request_id": f"eq.{rid2}", "select": "id,status"}).json()
+                assert rows and rows[0]["status"] == "pending"
+                cancelled = await api.post(f"/v1/coach/drafts/{rows[0]['id']}/cancel", headers=auth)
+                assert cancelled.json()["status"] == "cancelled"
+                late = await task
+                assert late.status_code == 200 and late.json()["status"] == "cancelled", late.json()
+                return rid
+
+        rid = asyncio.run(scenario())
+        rows = http.get(f"{URL}/rest/v1/coach_drafts", headers=c.headers, params={"request_id": f"eq.{rid}"}).json()
+        assert len(rows) == 1
+        assert c.active() is None  # nothing activated without approval

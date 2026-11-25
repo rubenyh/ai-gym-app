@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 
 import httpx
 import pytest
@@ -271,14 +272,17 @@ def test_adjust_mode_reads_active_program(harness):
 
 
 def test_user_rate_limit_and_daily_cap(harness):
+    """Limits are enforced by coach_begin_request in the DB (atomic across processes): 429, no draft, no model call."""
     h = harness(generate=[BODYWEIGHT_DRAFT], user_requests_per_hour=1)
     assert h.post().json()["status"] == "ready"
-    body = h.post().json()
-    assert body["error"]["code"] == "rate_limited" and len(h.provider.calls) == 2  # 1 interpret + 1 generate
+    r = h.post()
+    assert r.status_code == 429 and r.json()["code"] == "rate_limited" and r.json()["retryable"]
+    assert len(h.provider.calls) == 2 and len(h.data.drafts) == 1  # 1 interpret + 1 generate
 
     h = harness(generate=[BODYWEIGHT_DRAFT], daily_request_cap=1)
     h.post()
-    assert h.post().json()["error"]["code"] == "budget_exhausted"
+    r = h.post()
+    assert r.status_code == 429 and r.json()["code"] == "budget_exhausted" and len(h.data.drafts) == 1
 
 
 def test_missing_provider_config_is_actionable_503():
@@ -369,6 +373,10 @@ async def test_supabase_data_matches_m5_rpc_shapes():
     def handler(request: httpx.Request):
         assert request.headers["authorization"] == "Bearer user-token"
         if request.url.path.endswith("/rpc/coach_begin_request"):
+            body = json.loads(request.content)
+            if body["p_daily_cap"] == 0:
+                return httpx.Response(429, json={"code": "PT429", "message": "budget_exhausted"})
+            assert (body["p_hourly_limit"], body["p_daily_cap"]) == (10, 200)
             return httpx.Response(200, json={"created": True, "draft": draft_json})
         if request.url.path.endswith("/rpc/coach_save_draft"):
             return httpx.Response(429, json={"code": "PT429", "message": "rate_limited"})
@@ -381,9 +389,12 @@ async def test_supabase_data_matches_m5_rpc_shapes():
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         data = SupabaseData(http, "http://sb", "anon", "user-token")
-        begun = await data.begin_request(new_id(), "create", None, None, {})
+        begun = await data.begin_request(new_id(), "create", None, None, {}, 10, 200)
         assert begun["created"] is True and begun["draftId"] == draft_json["draftId"]
         assert (await data.get_draft(draft_json["draftId"]))["status"] == "ready"
         with pytest.raises(DataError) as e:
             await data.save_draft(draft_json["draftId"], "failed", None, None, {}, "m")
         assert e.value.status == 429 and e.value.code == "rate_limited"
+        with pytest.raises(DataError) as e:
+            await data.begin_request(new_id(), "create", None, None, {}, 10, 0)
+        assert e.value.status == 429 and e.value.code == "budget_exhausted"

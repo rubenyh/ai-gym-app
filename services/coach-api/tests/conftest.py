@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from coach_api.catalog import load_catalog
 from coach_api.config import Settings
-from coach_api.data import AuthError
+from coach_api.data import AuthError, DataError
 from coach_api.main import create_app
 
 CATALOG = load_catalog(Path(__file__).parent / "fixtures" / "catalog.json")
@@ -75,10 +75,15 @@ class FakeData:
         self.calls.append("get_context")
         return copy.deepcopy(self.context)
 
-    async def begin_request(self, request_id, mode, program_id, base_revision, input):
+    async def begin_request(self, request_id, mode, program_id, base_revision, input, hourly_limit, daily_cap):
+        """Like the RPC (20261125200000_coach_hardening.sql): dedupe first, then hourly (<= 10) and daily limits."""
         self.calls.append("begin_request")
         if request_id in self.by_request:
             return {**self.drafts[self.by_request[request_id]], "created": False}
+        if len(self.drafts) >= max(1, min(hourly_limit, 10)):
+            raise DataError(429, "rate_limited", "Too many coach requests. Try again later.")
+        if len(self.drafts) >= daily_cap:
+            raise DataError(429, "budget_exhausted", "The coach has reached today's request budget.")
         draft_id = new_id()
         self.by_request[request_id] = draft_id
         self.drafts[draft_id] = {
@@ -90,6 +95,8 @@ class FakeData:
 
     async def save_draft(self, draft_id, status, content, clarification, error, model):
         self.calls.append("save_draft")
+        if self.drafts[draft_id]["status"] != "pending":  # first terminal write wins; cancelled stays cancelled
+            return dict(self.drafts[draft_id])
         self.drafts[draft_id].update(status=status, draft=content, clarification=clarification, error=error, model=model)
         return self.drafts[draft_id]
 

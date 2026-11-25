@@ -56,6 +56,7 @@ class State(TypedDict, total=False):
     repairs: int
     content: DraftContent
     outcome: dict  # {status, content?, clarification?, error?}
+    saved: dict  # CoachDraftResponse as stored (a cancelled draft stays cancelled)
 
 
 @dataclass
@@ -200,9 +201,9 @@ def build_graph(deps: Deps):
 
     async def persist_draft(state: State) -> State:
         o = state["outcome"]
-        await deps.data.save_draft(state["draft_id"], o["status"], o.get("content"), o.get("clarification"),
-                                   o.get("error"), deps.provider.name)
-        return {}
+        saved = await deps.data.save_draft(state["draft_id"], o["status"], o.get("content"), o.get("clarification"),
+                                           o.get("error"), deps.provider.name)
+        return {"saved": saved}
 
     def done_or(next_node: str):
         return lambda state: "persist_draft" if state.get("outcome") else next_node
@@ -226,5 +227,6 @@ def build_graph(deps: Deps):
 
 
 async def run(deps: Deps, request: CoachDraftRequest, draft_id: str) -> dict[str, Any]:
+    """Returns the draft as persisted by coach_save_draft (only a pending draft changes server-side)."""
     final = await build_graph(deps).ainvoke({"request": request, "draft_id": draft_id})
-    return final["outcome"]
+    return final["saved"]

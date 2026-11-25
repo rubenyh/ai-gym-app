@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
-from collections import defaultdict, deque
-from datetime import UTC, datetime
 from typing import Awaitable, Callable
 
 import httpx
@@ -19,7 +16,7 @@ from .config import Settings
 from .data import AuthError, CoachData, DataError, SupabaseData, verify_user
 from .graph import Deps, run
 from .models import CoachDraftRequest, CoachDraftResponse, is_uuid
-from .providers import ModelProvider, provider_from_settings
+from .providers import ModelProvider, ProviderError, provider_from_settings
 
 log = logging.getLogger("coach_api")
 
@@ -27,36 +24,17 @@ VerifyFn = Callable[[str], Awaitable[str]]
 DataFactory = Callable[[str], CoachData]
 
 
-class Limits:
-    """In-process limits on top of the database rate limit.
-
-    ponytail: per-process memory; with several workers, each enforces its own share. Move to the DB if scaled out.
-    """
-
-    def __init__(self, per_hour: int, daily_cap: int):
-        self.per_hour, self.daily_cap = per_hour, daily_cap
-        self.user_hits: dict[str, deque[float]] = defaultdict(deque)
-        self.day, self.day_count = "", 0
-
-    def check(self, user_id: str) -> str | None:
-        now = time.monotonic()
-        hits = self.user_hits[user_id]
-        while hits and now - hits[0] > 3600:
-            hits.popleft()
-        today = datetime.now(UTC).date().isoformat()
-        if today != self.day:
-            self.day, self.day_count = today, 0
-        if len(hits) >= self.per_hour:
-            return "rate_limited"
-        if self.day_count >= self.daily_cap:
-            return "budget_exhausted"
-        hits.append(now)
-        self.day_count += 1
-        return None
-
-
 def _error(status: int, code: str, message: str, retryable: bool) -> HTTPException:
     return HTTPException(status, {"code": code, "message": message, "retryable": retryable})
+
+
+def _failure(exc: Exception) -> dict:
+    if isinstance(exc, ProviderError):
+        return {"code": exc.code, "message": exc.message, "retryable": exc.retryable}
+    if isinstance(exc, TimeoutError):
+        return {"code": "timeout", "message": "The coach took too long. Try again.", "retryable": True}
+    code = "data_unavailable" if isinstance(exc, DataError) else "provider_error"
+    return {"code": code, "message": "The coach is temporarily unavailable. Try again.", "retryable": True}
 
 
 def create_app(
@@ -71,7 +49,6 @@ def create_app(
     if catalog is None:
         catalog = load_catalog(settings.catalog_path) if settings.catalog_path.exists() else {}
     http = httpx.AsyncClient(timeout=10)
-    limits = Limits(settings.user_requests_per_hour, settings.daily_request_cap)
 
     if verify is None:
         async def verify(token: str) -> str:
@@ -119,46 +96,48 @@ def create_app(
 
     @app.post("/v1/coach/drafts")
     async def create_draft(body: CoachDraftRequest, who=Depends(auth)):
-        user_id, data = who
+        _, data = who
         if provider is None:
             raise _error(503, "coach_unavailable",
                          "The coach is not configured on the server (COACH_PROVIDER/GEMINI_API_KEY/GEMINI_MODEL).", True)
         if not catalog:
             raise _error(503, "coach_unavailable", "The exercise catalog is not available on the server.", True)
-        state = await data.begin_request(
-            body.request_id, body.mode, body.program_id, body.base_revision,
-            {"mode": body.mode, "preferencesText": body.preferences_text},
-        )
+        # One budget for the whole request: begin + context + both model calls + persist. A small reserve is kept
+        # so a failure can still be recorded; past it, the DB expires the pending draft (5 min) on retry.
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + settings.timeout_seconds
+        work_deadline = deadline - min(5.0, settings.timeout_seconds * 0.1)
+        try:
+            async with asyncio.timeout_at(work_deadline):
+                state = await data.begin_request(
+                    body.request_id, body.mode, body.program_id, body.base_revision,
+                    {"mode": body.mode, "preferencesText": body.preferences_text},
+                    settings.user_requests_per_hour, settings.daily_request_cap,
+                )
+        except TimeoutError:
+            raise _error(504, "timeout", "The coach took too long. Try again.", True) from None
         if not state.get("created"):
-            return respond(state)  # duplicate request ID: existing state, no new model call
+            return respond(state)  # duplicate request ID (also concurrent): existing state, no new model call
 
         draft_id = state["draftId"]
-        limited = limits.check(user_id)
-        outcome: dict
-        if limited:
-            outcome = {"status": "failed", "error": {
-                "code": limited, "retryable": True,
-                "message": "Too many coach requests. Try again later." if limited == "rate_limited"
-                else "The coach has reached today's request budget. Try again tomorrow.",
-            }}
-            await data.save_draft(draft_id, "failed", None, None, outcome["error"], provider.name)
-        else:
-            deps = Deps(data=data, provider=provider, catalog=catalog, settings=settings)
-            try:
-                outcome = await asyncio.wait_for(run(deps, body, draft_id), settings.timeout_seconds)
-            except Exception as exc:  # timeout, provider or network failure: plans stay untouched
-                code = ("timeout" if isinstance(exc, TimeoutError)
-                        else "data_unavailable" if isinstance(exc, DataError) else "provider_error")
-                log.warning("coach run failed", extra={"draft_id": draft_id, "code": code, "exc_type": type(exc).__name__})
-                outcome = {"status": "failed", "error": {
-                    "code": code, "retryable": True,
-                    "message": "The coach took too long. Try again." if code == "timeout"
-                    else "The coach is temporarily unavailable. Try again.",
-                }}
-                await data.save_draft(draft_id, "failed", None, None, outcome["error"], provider.name)
-        log.info("coach draft", extra={"draft_id": draft_id, "status": outcome["status"]})
-        return respond({**state, "status": outcome["status"], "draft": outcome.get("content"),
-                        "clarification": outcome.get("clarification"), "error": outcome.get("error")})
+        deps = Deps(data=data, provider=provider, catalog=catalog, settings=settings)
+        try:
+            async with asyncio.timeout_at(work_deadline):
+                saved = await run(deps, body, draft_id)
+            log.info("coach draft", extra={"draft_id": draft_id, "status": saved["status"]})
+            return respond(saved)
+        except Exception as exc:  # timeout, provider or network failure: plans stay untouched
+            error = _failure(exc)
+            log.warning("coach run failed", extra={"draft_id": draft_id, "code": error["code"],
+                                                   "exc_type": type(exc).__name__})
+        try:
+            async with asyncio.timeout_at(deadline):
+                # Returns the stored draft unchanged if it is no longer pending (cancelled or already saved).
+                saved = await data.save_draft(draft_id, "failed", None, None, error, provider.name)
+        except Exception as exc:
+            log.warning("could not record failure", extra={"draft_id": draft_id, "exc_type": type(exc).__name__})
+            saved = {**state, "status": "failed", "error": error}
+        return respond(saved)
 
     def require_uuid(draft_id: str) -> str:
         if not is_uuid(draft_id):

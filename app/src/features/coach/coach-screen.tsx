@@ -64,7 +64,9 @@ function CoachHome() {
     },
     onError: (e) => {
       const err = e instanceof CoachApiError ? e : new CoachApiError('error', 'Something went wrong.', true);
-      if (err.status !== null && err.status !== 503) requestId.current = null;
+      // Network errors and 5xx (incl. 504 timeout) may have reached the server: keep the ID so a retry dedupes.
+      // 4xx (e.g. 429 limits, which create no draft) are definitive: a retry is a new request.
+      if (err.status !== null && err.status < 500) requestId.current = null;
       setError(err);
     },
   });

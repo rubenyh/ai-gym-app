@@ -11,6 +11,14 @@ HTTP contract: `coachDraftRequest`/`coachDraftResponse` in [app/src/domain/contr
   approval is a `coach_approval` sync op from the app.
 - Graph: `load_context → validate_inputs → interpret_request → select_candidates → generate_draft →
   validate_draft → repair_or_fail (max 1) → persist_draft` ([coach_api/graph.py](coach_api/graph.py)).
+- Limits and budget (enforced in the database, `20261125200000_coach_hardening.sql`, so they hold across any number
+  of service processes): per-user hourly limit (`COACH_USER_REQUESTS_PER_HOUR`, can only lower the DB ceiling of 10)
+  and global daily cap (`COACH_DAILY_REQUEST_CAP`, atomic per-UTC-day counter); both return HTTP 429 without
+  creating a draft. `COACH_REQUEST_TIMEOUT_SECONDS` (90) covers begin + context + both model calls + persist; token
+  verification (10 s HTTP timeout) runs before it. A draft left `pending` by a crashed process expires to a retryable
+  `failed` when its request ID is repeated after 5 minutes.
+- Late results: `coach_save_draft` only changes a `pending` draft, so a cancelled or timed-out draft is never flipped
+  to `ready`; responses report the stored state.
 - Training bounds: `DRAFT_RULES` (versioned) in [coach_api/config.py](coach_api/config.py). Not medical guarantees.
 - Model: Gemini via `google-genai`, model name from `GEMINI_MODEL` (open decision O-08). Missing key or model →
   `503 coach_unavailable`. No fake provider exists outside tests.
@@ -31,10 +39,11 @@ python -m venv .venv
 
 ## Integration test (local Supabase stack only)
 
-Real auth, RPCs and RLS with the scripted model: draft persistence, request-ID idempotency, approval via
-`sync_push` (applied once, duplicate, second approval rejected, stale base conflict), failed draft leaves the
-active program unchanged, cross-account read denied, PT429 → HTTP 429. Skipped unless the env is set; refuses
-non-local URLs; creates fresh users with the service-role key (test-only) and never resets the database.
+Real auth, RPCs and RLS with the scripted model: draft persistence, request-ID idempotency (sequential and two
+concurrent POSTs), cancel while generating, approval via `sync_push` (applied once, duplicate, second approval
+rejected, stale base conflict), failed draft leaves the active program unchanged, cross-account read denied,
+PT429 → HTTP 429. Skipped unless the env is set; refuses non-local URLs; creates fresh users with the service-role
+key (test-only), deletes them at teardown and never resets the database.
 
 ```sh
 # repo root, bash, `supabase start` running and migrations applied
