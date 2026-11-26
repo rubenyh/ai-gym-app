@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Button, FormMessage } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
+import { validateImage } from '@/services/image-validation';
 import { supabase } from '@/services/supabase/client';
 
 import { friendlyError } from './errors';
@@ -50,7 +51,6 @@ export function AvatarPicker({
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
     if (result.canceled) return;
     const asset = result.assets[0];
-    const mimeType = asset.mimeType ?? 'image/jpeg';
     if (asset.fileSize && asset.fileSize > MAX_BYTES) {
       setMessage({ text: 'Choose an image smaller than 2 MB.', error: true });
       return;
@@ -58,9 +58,11 @@ export function AvatarPicker({
     setBusy(true);
     try {
       const body = await (await fetch(asset.uri)).arrayBuffer();
-      if (body.byteLength > MAX_BYTES) throw new Error('Choose an image smaller than 2 MB.');
-      const path = avatarObjectPath(userId, mimeType, Date.now());
-      const upload = await supabase.storage.from('avatars').upload(path, body, { contentType: mimeType });
+      // Storage checks only the declared label: validate the real bytes and upload with the detected type.
+      const check = validateImage(body, { maxBytes: MAX_BYTES });
+      if (!check.ok) throw new Error(check.error);
+      const path = avatarObjectPath(userId, check.mimeType, Date.now());
+      const upload = await supabase.storage.from('avatars').upload(path, body, { contentType: check.mimeType });
       if (upload.error) throw upload.error;
       const update = await supabase.from('profiles').update({ avatar_path: path }).eq('id', userId);
       if (update.error) {

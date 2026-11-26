@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import * as ImagePicker from 'expo-image-picker';
 import type { ReactNode } from 'react';
 import { Alert } from 'react-native';
 
@@ -45,6 +46,7 @@ jest.mock('@/db/repositories-context', () => ({
 jest.mock('./api', () => ({
   ...jest.requireActual('./api'),
   publishPost: jest.fn(),
+  uploadPhoto: jest.fn(),
   getPost: jest.fn(),
   getComments: jest.fn(async () => []),
   getProfileCard: jest.fn(),
@@ -91,6 +93,23 @@ describe('publication', () => {
     mockRepos.sessions.get.mockReturnValue({ ...synced, serverRevision: null });
     await wrap(<PublishScreen sessionId={ids.session} />);
     expect(screen.getByText(/Sync this workout first/)).toBeTruthy();
+  });
+
+  it('refuses to upload a picked file whose bytes are not an image, whatever its label', async () => {
+    mockRepos.sessions.get.mockReturnValue(synced);
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///x.png', mimeType: 'image/png', fileSize: 40, width: 1, height: 1 }],
+    } as never);
+    const html = new TextEncoder().encode('<html><script>alert(1)</script></html>');
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({ arrayBuffer: async () => html.buffer } as Response);
+    await wrap(<PublishScreen sessionId={ids.session} />);
+    await fireEvent.press(screen.getByText('Add photo (optional)'));
+    await fireEvent.press(await screen.findByText('Publish'));
+    expect(await screen.findByText(/Choose a JPEG, PNG or WebP image\. Your workout is still saved/)).toBeTruthy();
+    expect(mocked.uploadPhoto).not.toHaveBeenCalled();
+    expect(mocked.publishPost).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
   it('publish retry reuses the same post id', async () => {

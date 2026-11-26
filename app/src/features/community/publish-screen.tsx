@@ -10,6 +10,7 @@ import { Button, FormMessage, FormScreen, TextField } from '@/components/form';
 import { ThemedText } from '@/components/themed-text';
 import { useLocalQuery } from '@/db/repositories-context';
 import { friendlyError } from '@/features/account/errors';
+import { validateImage } from '@/services/image-validation';
 
 import { photoPath, publishPost, removePhoto, uploadPhoto } from './api';
 import { feedKey } from './feed-screen';
@@ -21,7 +22,7 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 export const SHARED_FIELDS = ['Workout title', 'Date', 'Duration', 'Exercise names', 'Sets: reps and weight'];
 export const EXCLUDED_FIELDS = ['Workout and exercise notes', 'Body weight', 'Private stats (XP, records, goals)', 'Timezone and routine details'];
 
-type Photo = { uri: string; mimeType: string };
+type Photo = { uri: string };
 
 /**
  * SOCIAL-02 publication. The post ID is generated once and reused for every retry, so
@@ -65,7 +66,7 @@ export function PublishScreen({ sessionId }: { sessionId: string }) {
     if (asset.fileSize && asset.fileSize > MAX_PHOTO_BYTES) return setError('Choose a photo smaller than 5 MB.');
     setError(null);
     discardUpload();
-    setPhoto({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg' });
+    setPhoto({ uri: asset.uri });
   }
 
   /** Replacing/removing the photo before a successful publish leaves no orphaned object. */
@@ -80,9 +81,12 @@ export function PublishScreen({ sessionId }: { sessionId: string }) {
     let path = uploadedPath;
     try {
       if (photo && !path) {
-        path = photoPath(userId, postId, photo.mimeType);
         const body = await (await fetch(photo.uri)).arrayBuffer();
-        await uploadPhoto(path, body, photo.mimeType);
+        // Storage checks only the declared label: validate the real bytes and upload with the detected type.
+        const check = validateImage(body, { maxBytes: MAX_PHOTO_BYTES });
+        if (!check.ok) throw new Error(check.error);
+        path = photoPath(userId, postId, check.mimeType);
+        await uploadPhoto(path, body, check.mimeType);
         setUploadedPath(path);
       }
       try {
