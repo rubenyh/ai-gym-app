@@ -169,7 +169,7 @@ test('social: private author post, photo and follow flow', async () => {
   assert.deepEqual((await users.b.client.from('posts').select('id')).data, []);
 
   await users.a.client.rpc('respond_follow_request', { p_requester: users.b.id, p_accept: true });
-  const feed = await users.b.client.rpc('get_feed', { p_before: null, p_limit: 20 });
+  const feed = await users.b.client.rpc('get_feed', { p_before: null, p_before_id: null, p_limit: 20 });
   assert.equal(feed.data.length, 1);
   const signed = await users.b.client.storage.from('post-photos').createSignedUrl(path, 60);
   assert.equal(signed.error, null);

@@ -81,7 +81,7 @@ async function reach(viewer, author, { postId, photo }) {
   const c = viewer.client;
   const [post, feed, likes, comments, card, file] = await Promise.all([
     c.from('posts').select('id').eq('id', postId),
-    c.rpc('get_feed', { p_before: null, p_limit: 50 }),
+    c.rpc('get_feed', { p_before: null, p_before_id: null, p_limit: 50 }),
     c.from('likes').select('user_id').eq('post_id', postId),
     c.from('comments').select('id').eq('post_id', postId),
     c.rpc('get_profile_card', { p_handle: author.handle }),
@@ -122,7 +122,7 @@ test('anon cannot execute any RPC', async () => {
     ['has_weekly_goal', { uid: users.a.id }], ['is_valid_timezone', { tz: 'UTC' }],
     ['week_start', { ts: now, tz: 'UTC' }], ['get_profile_card', { p_handle: users.a.handle }],
     ['search_profiles', { p_query: 'a', p_limit: 5 }], ['sync_pull', { p_after: 0, p_limit: 5 }],
-    ['get_feed', { p_before: null, p_limit: 5 }], ['coach_get_context', {}],
+    ['get_feed', { p_before: null, p_before_id: null, p_limit: 5 }], ['coach_get_context', {}],
   ]) {
     const res = await anon.rpc(fn, args);
     assert.ok(res.error, `anon executed ${fn}`);
