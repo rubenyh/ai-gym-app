@@ -1,9 +1,8 @@
-import { Fit, RiveView, useRiveFile } from '@rive-app/react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
 
-import ratingRiv from '@/assets/rive/rating.riv';
+import { RivePet } from '@/components/characters/rive-pet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -97,29 +96,19 @@ export function RiveProbe() {
   const reduceMotion = useReducedMotion();
   const [forceFallback, setForceFallback] = useState(false);
   const [viewError, setViewError] = useState<string | null>(null);
-  const { riveFile, isLoading, error } = useRiveFile(ratingRiv);
 
+  // Same platform adapter as the pet (native runtime on Android/iOS, canvas runtime on web).
   let body: React.ReactNode;
   if (forceFallback) body = <StaticCharacter reason="forced for testing" />;
-  else if (error || viewError) body = <StaticCharacter reason={error?.message ?? viewError ?? ''} />;
-  else if (isLoading || !riveFile) body = <ActivityIndicator />;
-  else
-    body = (
-      <RiveView
-        testID="rive-view"
-        file={riveFile}
-        fit={Fit.Contain}
-        autoPlay={!reduceMotion}
-        onError={(e) => setViewError(e.message)}
-        style={styles.rive}
-      />
-    );
+  else if (reduceMotion) body = <StaticCharacter reason="reduced motion" />;
+  else if (viewError !== null) body = <StaticCharacter reason={viewError} />;
+  else body = <RivePet stage={3} onFail={(reason) => setViewError(reason ?? 'Rive failed to load')} />;
 
   return (
     <>
       {body}
       <ThemedText type="small" themeColor="textSecondary">
-        Reduced motion: {reduceMotion ? 'on (autoplay off)' : 'off'}
+        Reduced motion: {reduceMotion ? 'on (static character)' : 'off'}
       </ThemedText>
       <Button
         label={forceFallback ? 'Show Rive animation' : 'Force static fallback'}
@@ -160,7 +149,6 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.three, gap: Spacing.three },
   section: { padding: Spacing.three, borderRadius: Spacing.three, gap: Spacing.two },
   button: { minHeight: 44, justifyContent: 'center' },
-  rive: { width: '100%', height: 180 },
   fallback: { height: 180, alignItems: 'center', justifyContent: 'center' },
   badge: {
     width: 64,

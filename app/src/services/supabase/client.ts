@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
+import * as SessionStore from './session-store';
 import { AppState } from 'react-native';
 
 import { createChunkedStorage } from './chunked-storage';
@@ -18,7 +18,7 @@ if (!url || !anonKey) {
 export const supabase = createClient<Database>(url, anonKey, {
   auth: {
     // Session tokens live in platform secure storage, never in workout tables or logs.
-    storage: createChunkedStorage(SecureStore),
+    storage: createChunkedStorage(SessionStore),
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,

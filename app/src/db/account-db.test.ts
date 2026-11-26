@@ -4,11 +4,11 @@ const mockOpened: { name: string; closed: boolean }[] = [];
 const mockMigrate = jest.fn(async () => {});
 
 jest.mock('expo-sqlite', () => ({
-  openDatabaseSync: (name: string) => {
+  openDatabaseAsync: async (name: string) => {
     const handle = { name, closed: false };
     mockOpened.push(handle);
     return {
-      execSync: () => {},
+      execAsync: async () => {},
       closeAsync: async () => {
         handle.closed = true;
       },

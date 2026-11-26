@@ -1,6 +1,6 @@
 import { drizzle, type ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
-import { deleteDatabaseSync, openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 import migrations from './migrations/migrations';
 import * as schema from './schema';
@@ -21,8 +21,13 @@ let current: { userId: string; sqlite: SQLiteDatabase; db: AccountDb; retiring?:
 export async function openAccountDb(userId: string): Promise<AccountDb> {
   if (current?.userId === userId) return current.db;
   await closeAccountDb();
-  const sqlite = openDatabaseSync(accountDatabaseName(userId));
-  sqlite.execSync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  // Web: wa-sqlite needs SharedArrayBuffer, which only cross-origin isolated pages get (metro.config.js headers).
+  if ((globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === false) {
+    throw new Error('This page cannot use offline storage (it is not cross-origin isolated). Reload the page.');
+  }
+  // Async open: on the web it waits for the wa-sqlite worker, which the sync open would not.
+  const sqlite = await openDatabaseAsync(accountDatabaseName(userId));
+  await sqlite.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   const db = drizzle(sqlite, { schema });
   await migrate(db, migrations);
   current = { userId, sqlite, db };
@@ -59,5 +64,5 @@ export function getOpenAccountDb(userId: string): AccountDb | null {
  */
 export async function deleteAccountDb(userId: string): Promise<void> {
   if (current?.userId === userId) await closeAccountDb();
-  deleteDatabaseSync(accountDatabaseName(userId));
+  await deleteDatabaseAsync(accountDatabaseName(userId));
 }

@@ -10,9 +10,9 @@ jest.mock('@rive-app/react-native', () => {
   return {
     Fit: { Contain: 'contain' },
     useRiveFile: (...args: unknown[]) => mockUseRiveFile(...args),
-    RiveView: (props: { testID?: string; autoPlay?: boolean }) => (
-      <View testID={props.testID} accessibilityHint={`autoPlay=${props.autoPlay}`} />
-    ),
+    useViewModelInstance: () => ({ instance: {}, isLoading: false, error: null }),
+    useRiveNumber: () => ({ value: undefined, setValue: jest.fn(), error: null }),
+    RiveView: (props: { testID?: string }) => <View testID={props.testID} />,
   };
 });
 
@@ -36,13 +36,13 @@ describe('VerifyScreen', () => {
     await render(<VerifyScreen />);
     expect(await screen.findByTestId('rive-fallback')).toBeTruthy();
     expect(screen.getByText(/decode failed/)).toBeTruthy();
-    expect(screen.queryByTestId('rive-view')).toBeNull();
+    expect(screen.queryByTestId('pet-rive')).toBeNull();
   });
 
   it('renders Rive when loaded and can force the static fallback', async () => {
     mockUseRiveFile.mockReturnValue({ riveFile: {}, isLoading: false, error: undefined });
     await render(<VerifyScreen />);
-    expect(await screen.findByTestId('rive-view')).toBeTruthy();
+    expect(await screen.findByTestId('pet-rive')).toBeTruthy();
     await fireEvent.press(screen.getByText('Force static fallback'));
     expect(screen.getByTestId('rive-fallback')).toBeTruthy();
   });
