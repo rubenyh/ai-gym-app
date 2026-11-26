@@ -88,7 +88,9 @@ test('training rows are owner-only and not writable through REST', async () => {
   for (const table of ['sessions', 'routines', 'programs', 'custom_exercises', 'server_change_log', 'reward_events']) {
     const { data, error } = await users.b.client.from(table).select('*');
     assert.equal(error, null, table);
-    assert.deepEqual(data, [], `${table} leaked to B`);
+    // B's own account_settings change (onboarding) is expected; nothing of A may appear.
+    const foreign = data.filter((r) => table !== 'server_change_log' || r.owner_id !== users.b.id);
+    assert.deepEqual(foreign, [], `${table} leaked to B`);
   }
   const ins = await users.a.client.from('sessions').insert({ id: uuid(), revision: 1, name: 'x', status: 'active',
     started_at: now, timezone: 'UTC', doc: {} });
@@ -106,7 +108,7 @@ test('B cannot overwrite A aggregate and pulls nothing of A', async () => {
   assert.equal(res.status, 'rejected');
   assert.equal(res.code, 'forbidden');
   const pull = await users.b.client.rpc('sync_pull', { p_after: 0, p_limit: 100 });
-  assert.deepEqual(pull.data.changes, []);
+  assert.deepEqual(pull.data.changes.filter((c) => c.aggregateId !== users.b.id), [], 'B pulled foreign changes');
   const own = await users.a.client.rpc('sync_pull', { p_after: 0, p_limit: 100 });
   assert.ok(own.data.changes.some((c) => c.aggregateId === ids.session));
 });
