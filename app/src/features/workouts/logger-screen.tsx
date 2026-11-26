@@ -123,9 +123,10 @@ export function LoggerScreen({ sessionId }: { sessionId: string }) {
         <ThemedText type="smallBold" style={{ flex: 1 }}>
           {session.name}
         </ThemedText>
+        {/* In the header row: the badge comes and goes with every write and must not move the sets below. */}
+        <SyncBadge meta={session} />
         <ElapsedClock startedAt={session.startedAt} />
       </Row>
-      <SyncBadge meta={session} />
       <RestTimerBanner timer={timerForThis} onDismiss={() => run(() => repos.sessions.clearRestTimer())} />
 
       {session.exercises.length === 0 ? <ThemedText themeColor="textSecondary">No exercises yet. Add one to start logging.</ThemedText> : null}
