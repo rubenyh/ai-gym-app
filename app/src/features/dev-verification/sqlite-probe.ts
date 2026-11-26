@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 /**
  * Dev-only persistence probe for M0. Uses its own database file so it never mixes with
- * future account-scoped training databases (docs/DECISIONS.md D-10).
+ * future account-scoped training databases (docs/planning/DECISIONS.md D-10).
  */
 const DATABASE_NAME = 'dev-probe.db';
 

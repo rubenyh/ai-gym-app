@@ -1,24 +1,25 @@
 # AI Gym App — specification index
 
-Status: implementation-ready product baseline, not an implemented application.
-Prepared: 2026-11-25. Working name: AI Gym App; final branding is undecided.
+Prepared: 2026-11-25, reorganized 2026-11-26. Working name: AI Gym App; final branding is undecided.
+Status: M0–M7 implemented as a local prototype (Expo app in `app/`, Supabase in `supabase/`, coach service in
+`services/coach-api/`); see [planning/IMPLEMENTATION_PLAN.md](planning/IMPLEMENTATION_PLAN.md). Engineering
+instructions: [`AGENTS.md`](../AGENTS.md).
 
-Copy this entire `docs/` directory into the existing repository. These documents supersede the earlier Flutter direction: the mobile app is now Expo + React Native + TypeScript. Repository status (2026-11-25): the Expo app lives in `app/`; the Flutter project was already removed. Engineering instructions: [`AGENTS.md`](../AGENTS.md).
+## Layout
 
-## Reading order
+| Folder | Responsibility | Documents |
+| --- | --- | --- |
+| [`product/`](product/) | What to build and why (authoritative for scope) | [Product](product/PRODUCT.md) (authoritative), [Requirements](product/REQUIREMENTS.md), [Screens and flows](product/SCREENS_AND_FLOWS.md), [Progress and gamification rules](product/PROGRESS_AND_GAMIFICATION.md) |
+| [`architecture/`](architecture/) | How the system is built: stack, boundaries, protocols, contracts | [Architecture](architecture/ARCHITECTURE.md), [Data and sync](architecture/DATA_AND_SYNC.md), [Contracts](architecture/CONTRACTS.md), [AI coach](architecture/AI_COACH.md), [Coach graph diagram](architecture/COACH_GRAPH.md) |
+| [`database/`](database/) | Implemented schema reference | [Data dictionary](database/DATA-DICTIONARY.md), [DB diagram](database/DB-DIAGRAM.md) |
+| [`planning/`](planning/) | Sequence, status, evidence, decisions | [Delivery plan](planning/DELIVERY_PLAN.md), [Implementation plan and status](planning/IMPLEMENTATION_PLAN.md), [Decisions](planning/DECISIONS.md), [Traceability](planning/TRACEABILITY.md) |
+| [`guides/`](guides/) | How to run and work on it | [Local setup (native + web)](guides/SETUP.md), [Claude setup prompt](guides/CLAUDE_SETUP_PROMPT.md) |
 
-1. [Product](PRODUCT.md): purpose, scope, decisions, and exclusions.
-2. [Requirements](REQUIREMENTS.md): functional/nonfunctional requirements and acceptance criteria.
-3. [Screens and flows](SCREENS_AND_FLOWS.md): navigation, interactions, and state handling.
-4. [Architecture](ARCHITECTURE.md): stack, boundaries, layout, and validation.
-5. [Data and synchronization](DATA_AND_SYNC.md): entities, permissions, offline writes, and recovery.
-6. [AI coach](AI_COACH.md): generation workflow, contracts, and approval.
-7. [Progress and gamification](PROGRESS_AND_GAMIFICATION.md): proposed numerical rules and calculations.
-8. [Delivery plan](DELIVERY_PLAN.md): implementation sequence, checks, and remaining decisions.
-9. [Implementation plan](IMPLEMENTATION_PLAN.md): ordered milestones, dependencies, acceptance checks, blockers.
-10. [Decision log](DECISIONS.md): confirmed choices, implementation defaults, open dependencies.
-11. [Data dictionary](DATA-DICTIONARY.md) and [database diagram](DB-DIAGRAM.md): implemented schema.
-12. [Claude setup prompt](CLAUDE_SETUP_PROMPT.md): paste into Claude in the repository to establish development instructions and supporting documentation.
+Reading order for a new contributor: Product → Requirements → Architecture → Data and sync → Implementation
+plan → Setup.
+
+Older references (SQL comments in applied migrations, commit messages) use the previous flat paths
+`docs/<NAME>.md`; the file names are unchanged, only the folder above was added.
 
 ## Decision status
 

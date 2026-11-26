@@ -7,7 +7,7 @@ rules, secrets, definition of done) live in AGENTS.md so every tool reads the sa
 
 ## Claude-specific notes
 
-- Start each task from [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md); cite requirement IDs.
+- Start each task from [docs/planning/IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md); cite requirement IDs.
 - Inside `app/`, [app/CLAUDE.md](app/CLAUDE.md) also loads the Expo SDK rules from `app/AGENTS.md`.
 - Optional subagents in `.claude/agents/` (use only when the task is large enough to benefit;
   simple work stays in the main session):

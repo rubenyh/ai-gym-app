@@ -2,7 +2,7 @@ import type { AndroidSymbol } from 'expo-symbols';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 /**
- * Single source of truth for the main tab shell (docs/SCREENS_AND_FLOWS.md#navigation).
+ * Single source of truth for the main tab shell (docs/product/SCREENS_AND_FLOWS.md#navigation).
  * Reorder, rename, or replace tabs here only; feature modules must not depend on tab order.
  * `name` must match a route file in src/app/(tabs)/ (`index` is the Home route).
  */

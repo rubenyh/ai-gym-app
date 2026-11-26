@@ -1,7 +1,7 @@
 # Local setup
 
 How to run the app, the local backend and the coach service on a development machine. Commands and their
-verification status: [AGENTS.md](../AGENTS.md#commands-verified-against-this-repository-on-2026-11-25).
+verification status: [AGENTS.md](../../AGENTS.md#commands-verified-against-this-repository-on-2026-11-25).
 
 ## Prerequisites (versions observed 2026-11-25)
 
@@ -21,8 +21,8 @@ Real `.env*` files are gitignored; copy the templates and fill values from `supa
 
 | Template | Copy to | Contains |
 | --- | --- | --- |
-| [app/.env.example](../app/.env.example) | `app/.env` | `EXPO_PUBLIC_*` only (bundled into the app): Supabase URL, anon key, coach URL. Android emulator: `http://10.0.2.2:54321`. |
-| [.env.example](../.env.example) | shell env of the coach service | server-only: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `COACH_*` limits. Never prefix these `EXPO_PUBLIC_` or put them under `app/`. |
+| [app/.env.example](../../app/.env.example) | `app/.env` | `EXPO_PUBLIC_*` only (bundled into the app): Supabase URL, anon key, coach URL. Android emulator: `http://10.0.2.2:54321`. |
+| [.env.example](../../.env.example) | shell env of the coach service | server-only: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `COACH_*` limits. Never prefix these `EXPO_PUBLIC_` or put them under `app/`. |
 
 ## 1. Local Supabase (repo root, Docker running)
 
@@ -51,7 +51,7 @@ npm run android                     # development build; fails on this Windows m
 npx expo start                      # serves JS to an installed development build
 ```
 
-Add dependencies with `npx expo install <package>`. Device smoke flows: [app/maestro/README.md](../app/maestro/README.md).
+Add dependencies with `npx expo install <package>`. Device smoke flows: [app/maestro/README.md](../../app/maestro/README.md).
 
 ## 2b. Web (browser)
 
@@ -107,7 +107,7 @@ python -m venv .venv
 ```
 
 Without `GEMINI_API_KEY`/`GEMINI_MODEL` (open O-08) the service answers `503 coach_unavailable`; manual training
-features do not depend on it. Details: [services/coach-api/README.md](../services/coach-api/README.md).
+features do not depend on it. Details: [services/coach-api/README.md](../../services/coach-api/README.md).
 
 ## Hosted configuration: not done
 

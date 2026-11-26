@@ -3,7 +3,7 @@
  *
  * Local Supabase Storage enforces only the bucket size limit and the *declared* MIME label: bytes are
  * not inspected (HTML labelled image/png and a header-only 30000x30000 PNG were both accepted; see
- * docs/TRACEABILITY.md security notes). expo-image-picker may return PNG or JPEG and never resizes.
+ * docs/planning/TRACEABILITY.md security notes). expo-image-picker may return PNG or JPEG and never resizes.
  * So the app reads the real signature and header dimensions and uploads with the DETECTED type.
  * A modified client can skip this; it limits accidents and casual abuse, not a determined attacker.
  */

@@ -1,5 +1,5 @@
 /**
- * Local half of the sync protocol (docs/CONTRACTS.md "Outbox", DATA_AND_SYNC.md). Every method is one
+ * Local half of the sync protocol (docs/architecture/CONTRACTS.md "Outbox", DATA_AND_SYNC.md). Every method is one
  * SQLite transaction. The network half lives in services/sync/engine.ts.
  */
 import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';

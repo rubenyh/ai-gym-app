@@ -3,7 +3,7 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { VerifyScreen } from '@/features/dev-verification/verify-screen';
 
 /**
- * Development-only native verification (docs/IMPLEMENTATION_PLAN.md, M0).
+ * Development-only native verification (docs/planning/IMPLEMENTATION_PLAN.md, M0).
  * Deep link: aigym://dev/verify?source=adb
  */
 export default function DevVerifyRoute() {

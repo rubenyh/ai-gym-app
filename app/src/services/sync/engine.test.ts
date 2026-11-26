@@ -14,7 +14,7 @@ jest.mock('@/services/supabase/client', () => ({ supabase: {} }));
 
 type Agg = { revision: number; deleted: boolean; doc: unknown };
 
-/** In-memory server following docs/CONTRACTS.md: receipts per opId, revisions, ordered change log. */
+/** In-memory server following docs/architecture/CONTRACTS.md: receipts per opId, revisions, ordered change log. */
 class FakeServer implements SyncRpc {
   aggregates = new Map<string, Agg>();
   receipts = new Map<string, PushResult>();

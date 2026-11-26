@@ -13,7 +13,7 @@ otherwise external).
 
 The dataset's exercise images and GIFs are (c) Gym visual (https://gymvisual.com/). They are **not** covered
 by the MIT license below, are **not** included in this app, are **not** hotlinked, and **no license to them is
-held** by this project (docs/DECISIONS.md O-01). Image paths, GIF paths, media ids and media attribution fields
+held** by this project (docs/planning/DECISIONS.md O-01). Image paths, GIF paths, media ids and media attribution fields
 are stripped during import. The app shows a placeholder instead.
 
 ## License applicable to the imported data and instruction text

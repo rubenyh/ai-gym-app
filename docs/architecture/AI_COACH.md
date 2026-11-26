@@ -1,5 +1,7 @@
 # Hybrid AI coach
 
+Implemented graph and request lifecycle as diagrams: [COACH_GRAPH.md](COACH_GRAPH.md).
+
 ## Product contract
 
 The coach is optional. Users can create and use routines without it. Interaction combines forms for stats and availability with a natural-language request such as “prioritize back” or “include more biceps.” No full chat or automatic weekly adjustment in this release. Every generated change is a draft and requires approval.

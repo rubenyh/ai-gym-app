@@ -1,6 +1,6 @@
 # coach-api
 
-FastAPI + LangGraph coach service (M5, COACH-01/02, NFR-05/10). Spec: [docs/AI_COACH.md](../../docs/AI_COACH.md),
+FastAPI + LangGraph coach service (M5, COACH-01/02, NFR-05/10). Spec: [docs/architecture/AI_COACH.md](../../docs/architecture/AI_COACH.md),
 HTTP contract: `coachDraftRequest`/`coachDraftResponse` in [app/src/domain/contracts.ts](../../app/src/domain/contracts.ts).
 
 - Auth: `Authorization: Bearer <Supabase access token>`, verified with Supabase Auth `GET /auth/v1/user`

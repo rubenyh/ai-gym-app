@@ -1,4 +1,4 @@
-"""Evaluation cases from docs/AI_COACH.md with a scripted (mocked) provider. Deterministic, no network."""
+"""Evaluation cases from docs/architecture/AI_COACH.md with a scripted (mocked) provider. Deterministic, no network."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # Requirement traceability
 
-Requirement IDs come from [REQUIREMENTS.md](REQUIREMENTS.md). Paths are relative to the repository root;
+Requirement IDs come from [REQUIREMENTS.md](../product/REQUIREMENTS.md). Paths are relative to the repository root;
 `app/src/` is abbreviated `src/`. Status as of 2026-11-25. This file says what is verified, not what is
 believed to work.
 

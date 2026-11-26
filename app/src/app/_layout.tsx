@@ -54,7 +54,7 @@ function RootStack() {
       <Stack.Protected redirectTo={home} guard={kind === 'ready'}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Home' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-        {/* Feature stacks; each directory owns its _layout.tsx (docs/IMPLEMENTATION_PLAN.md execution DAG). */}
+        {/* Feature stacks; each directory owns its _layout.tsx (docs/planning/IMPLEMENTATION_PLAN.md execution DAG). */}
         <Stack.Screen name="training" options={{ headerShown: false }} />
         <Stack.Screen name="insights" options={{ headerShown: false }} />
         <Stack.Screen name="coach-draft" options={{ headerShown: false }} />

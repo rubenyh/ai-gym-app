@@ -3,7 +3,7 @@
 **Status: prepared, never executed.** They need an installed development build (blocked by O-13 on this
 Windows machine), the local Supabase stack reachable from the device (`EXPO_PUBLIC_SUPABASE_URL=http://10.0.2.2:54321`
 on the Android emulator), and [Maestro](https://maestro.mobile.dev) installed. Selectors use visible labels; adjust
-them if a run shows a mismatch, and record device, OS and result in docs/IMPLEMENTATION_PLAN.md.
+them if a run shows a mismatch, and record device, OS and result in docs/planning/IMPLEMENTATION_PLAN.md.
 
 Accounts: create two confirmed users first (sign up, open the Mailpit link at http://127.0.0.1:54324).
 

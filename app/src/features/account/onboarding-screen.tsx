@@ -18,7 +18,7 @@ export const LENGTH_UNITS = [
 ] as const;
 export const TARGET_DAYS = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ value: n, label: String(n) }));
 
-/** Basic onboarding (docs/SCREENS_AND_FLOWS.md#first-use). The training profile stays optional. */
+/** Basic onboarding (docs/product/SCREENS_AND_FLOWS.md#first-use). The training profile stays optional. */
 export function OnboardingScreen() {
   const { refresh } = useAccount();
   const [handle, setHandle] = useState('');

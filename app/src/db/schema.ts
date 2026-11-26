@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /**
- * Local account database (one SQLite file per signed-in account, docs/DECISIONS.md D-10).
+ * Local account database (one SQLite file per signed-in account, docs/planning/DECISIONS.md D-10).
  * M1 caches the account's identity, settings and weekly-goal history so a previously
  * authenticated user can open the app offline (AUTH-02). Server rows are authoritative.
  * M2/M3 add training data, the outbox and sync bookkeeping below.

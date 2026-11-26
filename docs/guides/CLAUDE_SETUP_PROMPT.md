@@ -16,9 +16,9 @@ If the repo is still Flutter, document a migration plan preserving existing sour
 
 1. Root `CLAUDE.md`: short entry point linking authoritative specs, architecture boundaries, working commands verified from the repository, checks, secret handling and definition of done. Use exact filename casing.
 2. Root `AGENTS.md`: equivalent tool-neutral engineering instructions. Avoid divergent copies of product requirements; link `docs/`.
-3. Keep `docs/PRODUCT.md` as the authoritative product document. Do not create a conflicting root `product.md`; add a pointer only if repository conventions require it.
-4. `docs/IMPLEMENTATION_PLAN.md`: ordered milestones with dependency relationships, requirement IDs, files/components likely affected, acceptance checks, and unresolved blockers. Use `docs/DELIVERY_PLAN.md` as the starting point.
-5. `docs/DECISIONS.md`: concise decision log distinguishing user-confirmed choices, proposed defaults, and open dependencies. No fabricated resolved decisions.
+3. Keep `docs/product/PRODUCT.md` as the authoritative product document. Do not create a conflicting root `product.md`; add a pointer only if repository conventions require it.
+4. `docs/planning/IMPLEMENTATION_PLAN.md`: ordered milestones with dependency relationships, requirement IDs, files/components likely affected, acceptance checks, and unresolved blockers. Use `docs/planning/DELIVERY_PLAN.md` as the starting point.
+5. `docs/planning/DECISIONS.md`: concise decision log distinguishing user-confirmed choices, proposed defaults, and open dependencies. No fabricated resolved decisions.
 6. `.claude/agents/`: a small number of focused subagent definitions only where they provide distinct useful work, such as Expo/offline data, Supabase permissions/sync, and coach workflow. Use current valid Claude Code format, bounded responsibilities, minimal necessary tools, and shared authoritative docs. Do not create a large agent hierarchy or make delegation mandatory for simple work.
 7. `.claude/skills/`: only project-specific reusable workflows, such as verifying offline sync/reward corrections and checking Supabase privacy. Follow current valid Claude Code format. Link project specs and executable checks where available; do not invent commands or copy generic advice into dozens of skills.
 8. An environment-variable template if missing, with placeholders only. Document public Expo configuration versus server-only secrets. A Gemini key or Supabase service-role key must never be prefixed `EXPO_PUBLIC_` or bundled into the app.

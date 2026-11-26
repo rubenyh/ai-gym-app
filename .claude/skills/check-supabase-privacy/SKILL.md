@@ -5,7 +5,7 @@ description: Check AI Gym App privacy enforcement in Supabase (RLS, RPCs, Storag
 
 # Check Supabase privacy
 
-Specs: `docs/PRODUCT.md` (Privacy), `docs/DATA_AND_SYNC.md` (Social permissions), `docs/REQUIREMENTS.md`
+Specs: `docs/product/PRODUCT.md` (Privacy), `docs/architecture/DATA_AND_SYNC.md` (Social permissions), `docs/product/REQUIREMENTS.md`
 (NFR-04, NFR-05, SOCIAL-01..05). For a deeper read-only audit, the `supabase-privacy-reviewer` subagent applies the same checklist.
 
 ## 1. Static checks

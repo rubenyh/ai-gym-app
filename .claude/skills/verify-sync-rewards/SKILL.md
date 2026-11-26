@@ -5,8 +5,8 @@ description: Verify offline recovery, sync idempotency, and reward/progress corr
 
 # Verify offline sync and reward corrections
 
-Specs: `docs/DATA_AND_SYNC.md` (sync protocol, recovery), `docs/PROGRESS_AND_GAMIFICATION.md`,
-`docs/REQUIREMENTS.md` (SESSION-03/04, SYNC-01, GAME-01, NFR-02/03/11), release gates in `docs/DELIVERY_PLAN.md`.
+Specs: `docs/architecture/DATA_AND_SYNC.md` (sync protocol, recovery), `docs/product/PROGRESS_AND_GAMIFICATION.md`,
+`docs/product/REQUIREMENTS.md` (SESSION-03/04, SYNC-01, GAME-01, NFR-02/03/11), release gates in `docs/planning/DELIVERY_PLAN.md`.
 
 ## 1. Run what exists
 

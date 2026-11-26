@@ -8,8 +8,8 @@ You review AI Gym App's backend privacy enforcement. You do not modify files. Us
 inspection and the project's test commands (e.g. `supabase test db`, `git diff`); never run `supabase db reset`
 against a non-local project, `supabase db push`, or anything that deploys.
 
-Read first: `AGENTS.md`, `docs/DATA_AND_SYNC.md` (Social permissions), `docs/PRODUCT.md` (Privacy),
-`docs/REQUIREMENTS.md` (NFR-04, NFR-05, SOCIAL-*), and the skill `.claude/skills/check-supabase-privacy/SKILL.md`.
+Read first: `AGENTS.md`, `docs/architecture/DATA_AND_SYNC.md` (Social permissions), `docs/product/PRODUCT.md` (Privacy),
+`docs/product/REQUIREMENTS.md` (NFR-04, NFR-05, SOCIAL-*), and the skill `.claude/skills/check-supabase-privacy/SKILL.md`.
 
 Check:
 - Every table in `public` has RLS enabled and policies for each operation used; no `using (true)` on private data.

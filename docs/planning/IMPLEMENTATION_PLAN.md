@@ -1,6 +1,6 @@
 # Implementation plan
 
-Derived from [DELIVERY_PLAN.md](DELIVERY_PLAN.md). Requirement IDs refer to [REQUIREMENTS.md](REQUIREMENTS.md);
+Derived from [DELIVERY_PLAN.md](DELIVERY_PLAN.md). Requirement IDs refer to [REQUIREMENTS.md](../product/REQUIREMENTS.md);
 decision/blocker IDs (`O-xx`, `D-xx`) refer to [DECISIONS.md](DECISIONS.md). Status as of 2026-11-25 (M2–M7 summary: [M2–M7 status](#m2m7-status-2026-11-25)):
 **M0**: code and automated checks done; Android build/device verification **pending** (O-13, see
 [M0 status](#m0-status-2026-11-25)). **M1**: implemented and verified against the local Supabase stack; device
@@ -60,12 +60,12 @@ workouts finished in the same millisecond at a page boundary can be skipped; lik
 
 **Next device checkpoint (single native build):** this build adds `expo-crypto`, `expo-image-picker` (photos
 permission only), `@react-native-community/netinfo` to the M0/M1 natives. After O-13: `npm run android`, then run
-the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../app/maestro/README.md)).
+the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../../app/maestro/README.md)).
 
 ## Web build and browser validation (2026-11-26)
 
 The user moved validation to the browser and handles Android/iOS device checks. The app now runs on Expo web
-from the same code (D-35, setup: [SETUP.md](SETUP.md#2b-web-browser)). Tested in the Orca embedded browser
+from the same code (D-35, setup: [SETUP.md](../guides/SETUP.md#2b-web-browser)). Tested in the Orca embedded browser
 (Chromium 150) against the local Supabase stack and the local coach service without Gemini credentials, with two
 isolated browser profiles (Alice, Bob) and sequential sign-ins in one profile. Database state was checked with
 `psql` in the local DB container, not inferred from the UI.
@@ -214,7 +214,7 @@ verified sequentially, not under real concurrency; the floating resume bar posit
 
 ## Execution DAG (2026-11-25, M2–M7 session)
 
-Contracts are frozen in [CONTRACTS.md](CONTRACTS.md). Tasks run in parallel as soon as prerequisites are done;
+Contracts are frozen in [CONTRACTS.md](../architecture/CONTRACTS.md). Tasks run in parallel as soon as prerequisites are done;
 a task counts as integrated only against its real dependency. One owner per path; the lead owns
 `app/package.json`, lockfile, `app/app.json`, `app/src/domain/*`, root navigation and consolidated docs.
 
@@ -259,7 +259,7 @@ Work:
 - (Done by hand, D-12; the `reset-project` script no longer exists.) Run `npm run reset-project` in `app/` (moves starter to `app/example/`, which is gitignored), or delete
   starter screens deliberately; keep `src/app/` thin.
 - Fix the 3 current `npx tsc --noEmit` errors; configure ESLint (`npm run lint`) and jest-expo + RNTL with
-  one real test; add `typecheck`/`test` npm scripts and record them in [AGENTS.md](../AGENTS.md#commands-verified-against-this-repository-on-2026-11-25).
+  one real test; add `typecheck`/`test` npm scripts and record them in [AGENTS.md](../../AGENTS.md#commands-verified-against-this-repository-on-2026-11-25).
 - Set app name/scheme/bundle IDs (blocked on **O-05**).
 - `npx expo install expo-sqlite expo-dev-client`, Rive + Nitro, and confirm Reanimated/worklets already present.
 - Central tab shell (Home, Workouts, Coach, Community, Progress) with placeholder screens.
@@ -279,7 +279,7 @@ Blockers: **O-04** Rive compatibility, **O-05** identifiers, **O-06** iOS build 
 `app/src/app/(tabs)/`; dev-only route `app/src/app/dev/verify.tsx` →
 `app/src/features/dev-verification/` (SQLite probe, Rive sample with static fallback, Reanimated keyframe with
 `ReduceMotion.System`, deep-link param); provisional identifiers `com.rubenyh.aigym` / scheme `aigym` (O-05);
-Rive sample `app/assets/rive/rating.riv` with [attribution](../app/assets/rive/ATTRIBUTION.md); ESLint, jest-expo.
+Rive sample `app/assets/rive/rating.riv` with [attribution](../../app/assets/rive/ATTRIBUTION.md); ESLint, jest-expo.
 
 Installed native packages: `expo-sqlite ~58.0.18`, `expo-dev-client ~58.0.21`, `@rive-app/react-native 0.5.18`,
 `react-native-nitro-modules 0.36.5` (D-11); Reanimated 4.7.1 / worklets 0.13.0 and Expo Router were already present.
@@ -360,8 +360,8 @@ Blockers: **O-05**, **O-07** Google credentials (email/password not blocked).
 - Server: migration `supabase/migrations/20261125120000_m1_identity_settings.sql` — `profiles`, `user_settings`,
   `weekly_goals`, `training_profiles`, `body_weight_entries`, private `avatars` bucket; constraints, index, explicit
   grants (none for `anon`), RLS on every table, frozen weekly-goal history, timezone change from next week, atomic
-  `complete_onboarding` and `schedule_weekly_goal` RPCs. Documented in [DATA-DICTIONARY.md](DATA-DICTIONARY.md)
-  and [DB-DIAGRAM.md](DB-DIAGRAM.md).
+  `complete_onboarding` and `schedule_weekly_goal` RPCs. Documented in [DATA-DICTIONARY.md](../database/DATA-DICTIONARY.md)
+  and [DB-DIAGRAM.md](../database/DB-DIAGRAM.md).
 - `supabase/config.toml`: `site_url = "aigym://"`, redirect allowlist `aigym://**`, email confirmations on, Google
   provider block present but disabled (env references, O-07).
 - App: Supabase client (`app/src/services/supabase/`) with PKCE and chunked `expo-secure-store` session storage;
@@ -464,7 +464,7 @@ Blockers: **O-03** final assets (placeholder allowed).
 approval application needs M3.
 
 Work:
-- `services/coach-api/`: FastAPI, Supabase token verification, LangGraph nodes per [AI_COACH.md](AI_COACH.md),
+- `services/coach-api/`: FastAPI, Supabase token verification, LangGraph nodes per [AI_COACH.md](../architecture/AI_COACH.md),
   Pydantic contracts, deterministic validation, one repair, request-ID idempotency, rate limit.
 - Provider adapter with mocked responses first; Gemini integration after **O-08**.
 - `coach_requests`/`coach_drafts` tables with RLS; approval RPC with approval receipt + base-revision check.

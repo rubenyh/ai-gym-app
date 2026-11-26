@@ -1,6 +1,6 @@
 /**
  * Frozen shared contracts (M2–M6). Client, Supabase RPCs (SQL) and the coach service (Pydantic) all
- * implement these shapes. Change them only through the lead and record the change in docs/CONTRACTS.md.
+ * implement these shapes. Change them only through the lead and record the change in docs/architecture/CONTRACTS.md.
  *
  * Conventions
  * - App-owned IDs are lowercase UUID v4 (expo-crypto randomUUID).

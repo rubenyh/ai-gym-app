@@ -19,7 +19,7 @@ export type RepoCtx = {
 
 /**
  * Queues a sync op inside the caller's transaction (NFR-02). Upserts carry no payload: the worker
- * coalesces pending ops and freezes the current document when sending (docs/CONTRACTS.md "Outbox").
+ * coalesces pending ops and freezes the current document when sending (docs/architecture/CONTRACTS.md "Outbox").
  */
 export function enqueue(
   ctx: RepoCtx,

@@ -9,19 +9,19 @@ requirements live only in [`docs/`](docs/README.md); this file does not restate 
 | Need | Read |
 | --- | --- |
 | Index and decision-status vocabulary | [docs/README.md](docs/README.md) |
-| Product scope, privacy, exclusions (authoritative) | [docs/PRODUCT.md](docs/PRODUCT.md) |
-| Requirement IDs and acceptance criteria | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) |
-| Screens, navigation, flows | [docs/SCREENS_AND_FLOWS.md](docs/SCREENS_AND_FLOWS.md) |
-| Stack and module boundaries | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Entities, RLS, sync protocol | [docs/DATA_AND_SYNC.md](docs/DATA_AND_SYNC.md) |
-| Coach graph, API, approval | [docs/AI_COACH.md](docs/AI_COACH.md) |
-| XP, levels, PRs, weekly consistency | [docs/PROGRESS_AND_GAMIFICATION.md](docs/PROGRESS_AND_GAMIFICATION.md) |
-| Ordered milestones and current blockers | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) |
-| Confirmed vs. default vs. open decisions | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Product scope, privacy, exclusions (authoritative) | [docs/product/PRODUCT.md](docs/product/PRODUCT.md) |
+| Requirement IDs and acceptance criteria | [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md) |
+| Screens, navigation, flows | [docs/product/SCREENS_AND_FLOWS.md](docs/product/SCREENS_AND_FLOWS.md) |
+| Stack and module boundaries | [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) |
+| Entities, RLS, sync protocol | [docs/architecture/DATA_AND_SYNC.md](docs/architecture/DATA_AND_SYNC.md) |
+| Coach graph, API, approval | [docs/architecture/AI_COACH.md](docs/architecture/AI_COACH.md) |
+| XP, levels, PRs, weekly consistency | [docs/product/PROGRESS_AND_GAMIFICATION.md](docs/product/PROGRESS_AND_GAMIFICATION.md) |
+| Ordered milestones and current blockers | [docs/planning/IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md) |
+| Confirmed vs. default vs. open decisions | [docs/planning/DECISIONS.md](docs/planning/DECISIONS.md) |
 | Expo SDK-specific rules (versioned docs, CNG, `expo install`) | [app/AGENTS.md](app/AGENTS.md) |
 
 Do not re-run product discovery or swap selected technologies without a concrete compatibility
-reason recorded in `docs/DECISIONS.md`. Never present an open dependency as resolved.
+reason recorded in `docs/planning/DECISIONS.md`. Never present an open dependency as resolved.
 
 ## Repository layout
 
@@ -31,7 +31,7 @@ app/                 Expo SDK 58 app (the only mobile app — never create a sec
   src/features/      auth, account, catalog, workouts, sync, progress, gamification, coach, community
   src/db/            per-account SQLite (Drizzle schema + migrations)
   src/services/      Supabase client, sync worker, coach client, query provider
-  src/domain/        frozen shared contracts (docs/CONTRACTS.md)
+  src/domain/        frozen shared contracts (docs/architecture/CONTRACTS.md)
   maestro/           device smoke flows (prepared, not executed)
   src/components/    shared UI and character wrappers
 supabase/            Supabase CLI project: config.toml, migrations/, tests/database (pgTAP), tests/api
@@ -39,9 +39,9 @@ services/coach-api/  FastAPI + LangGraph coach service (Python 3.12, venv in .ve
 docs/                specifications
 ```
 
-`app/` implements M0–M7 code paths (see [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md#m2m7-status-2026-11-25)) plus a dev-only native verification route
-(`/dev/verify`). Schema reference: [docs/DATA-DICTIONARY.md](docs/DATA-DICTIONARY.md),
-[docs/DB-DIAGRAM.md](docs/DB-DIAGRAM.md). The earlier Flutter project was already removed from `app/`
+`app/` implements M0–M7 code paths (see [IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md#m2m7-status-2026-11-25)) plus a dev-only native verification route
+(`/dev/verify`). Schema reference: [docs/database/DATA-DICTIONARY.md](docs/database/DATA-DICTIONARY.md),
+[docs/database/DB-DIAGRAM.md](docs/database/DB-DIAGRAM.md). The earlier Flutter project was already removed from `app/`
 in commit `fbc5047`; no Flutter migration remains.
 
 ## Commands (verified against this repository on 2026-11-25)
@@ -56,11 +56,11 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | Typecheck | `npm run typecheck` | passes. Runs `expo customize tsconfig.json` first to generate gitignored `expo-env.d.ts` and typed-route types, then `tsc --noEmit`. |
 | Lint | `npm run lint` | passes (ESLint 9 flat config, `eslint-config-expo`) |
 | Unit tests | `npm test` | passes (jest-expo, React Native Testing Library 14) |
-| App integration tests | `npm run test:integration` (local stack env exported, see API isolation row) | passes per [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) final checks; refuses non-local URLs |
+| App integration tests | `npm run test:integration` (local stack env exported, see API isolation row) | passes per [IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md) final checks; refuses non-local URLs |
 | Diagnose deps | `npx expo-doctor` | 20/20 checks passed (downloads expo-doctor on demand) |
-| Android dev build | `npm run android` (`expo run:android`) | **fails on this Windows machine** (path length, O-13); see [M0 status](docs/IMPLEMENTATION_PLAN.md#m0-status-2026-11-25) |
+| Android dev build | `npm run android` (`expo run:android`) | **fails on this Windows machine** (path length, O-13); see [M0 status](docs/planning/IMPLEMENTATION_PLAN.md#m0-status-2026-11-25) |
 | Dev server | `npx expo start` | serves the installed development build |
-| Web app | `npx expo start --web --port 8081` with browser-reachable `EXPO_PUBLIC_*` URLs ([SETUP.md](docs/SETUP.md#2b-web-browser)) | verified 2026-11-26 in the Orca browser against the local stack; see [web validation](docs/IMPLEMENTATION_PLAN.md#web-build-and-browser-validation-2026-11-26) |
+| Web app | `npx expo start --web --port 8081` with browser-reachable `EXPO_PUBLIC_*` URLs ([SETUP.md](docs/guides/SETUP.md#2b-web-browser)) | verified 2026-11-26 in the Orca browser against the local stack; see [web validation](docs/planning/IMPLEMENTATION_PLAN.md#web-build-and-browser-validation-2026-11-26) |
 | iOS dev build | `npm run ios` | **not verified**: needs macOS or EAS Build (open O-06) |
 | Local backend | `supabase start` (repo root) | works with Docker Desktop running (local stack only) |
 | Backend readiness | `bash scripts/supabase-ready.sh` (repo root) | probes REST + Storage via Kong; on 502 restarts Kong once (stale container IPs after `db reset`), bounded 10 × 1 s |
@@ -75,7 +75,7 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | Sync end-to-end | `set -a; eval "$(supabase status -o env)"; set +a; npm run test:integration` (in `app/`) | passes, 10 tests; real engine + repositories vs local stack; refuses non-local URLs |
 | Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per [its README](services/coach-api/README.md)) | passes, 51 with local env exported (`set -a; eval "$(supabase status -o env)"; set +a`); without it the 5 integration tests skip. They use a scripted model and the local stack, no Gemini key |
 
-Full local setup (prerequisites, env files, stack, app, coach): [docs/SETUP.md](docs/SETUP.md).
+Full local setup (prerequisites, env files, stack, app, coach): [docs/guides/SETUP.md](docs/guides/SETUP.md).
 Update this table when a command is added or its status changes. Never document a command you have
 not run or confirmed exists.
 
@@ -89,7 +89,7 @@ not run or confirmed exists.
 - **Sync is a protocol**, not a cache: stable UUID operation IDs, transactional server receipts,
   aggregate revisions, tombstones, ordered cursor pulls, recoverable conflicts (no silent
   last-write-wins on completed workouts). Supabase Realtime or query caches alone are not sync.
-  See [DATA_AND_SYNC.md](docs/DATA_AND_SYNC.md#sync-protocol--implementation-default).
+  See [DATA_AND_SYNC.md](docs/architecture/DATA_AND_SYNC.md#sync-protocol--implementation-default).
 - **Offline first.** One active workout at a time. Manual routines and logging never depend on AI or
   the network. Saving a set never waits on a remote call or an animation.
 - **Separate snapshots.** Plans (routines/programs), performed sessions, coach drafts, and published
@@ -131,12 +131,12 @@ duplicate coach approval, and invalid model output. Coverage percentages are not
 
 ## Definition of done
 
-1. Change traces to requirement IDs in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) and a milestone in
-   [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+1. Change traces to requirement IDs in [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md) and a milestone in
+   [docs/planning/IMPLEMENTATION_PLAN.md](docs/planning/IMPLEMENTATION_PLAN.md).
 2. Typecheck and lint pass (or the failure is pre-existing and documented above).
 3. Relevant tests added and passing; for backend permission changes, two-account tests via `supabase test db`.
 4. No secrets or restricted media added; new env vars added to the right `.env.example`.
-5. Docs updated when behavior, commands, or decisions change (`docs/DECISIONS.md` for decisions).
+5. Docs updated when behavior, commands, or decisions change (`docs/planning/DECISIONS.md` for decisions).
 6. Report states exactly what was run and what was not. Never claim untested behavior works.
 
 ## Out of bounds without explicit user approval

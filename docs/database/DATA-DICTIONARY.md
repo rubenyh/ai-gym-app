@@ -1,6 +1,6 @@
 # Data dictionary
 
-Implemented server schema as of M6 (2026-11-25; migrations M1, M3 sync, M4 rewards, M5 coach, M6 social). Logical model and future entities: [DATA_AND_SYNC.md](DATA_AND_SYNC.md).
+Implemented server schema as of M6 (2026-11-25; migrations M1, M3 sync, M4 rewards, M5 coach, M6 social). Logical model and future entities: [DATA_AND_SYNC.md](../architecture/DATA_AND_SYNC.md).
 Diagram: [DB-DIAGRAM.md](DB-DIAGRAM.md). Source of truth: `supabase/migrations/` (server) and `app/src/db/schema.ts`
 (device). Update this file in the same change as any migration.
 
@@ -183,7 +183,7 @@ in their own folder; others read only while the referencing post is accessible t
 | `coach_save_draft(draft_id, status, content, clarification, error, model) -> jsonb` | RPC, security definer | Validates content/clarification/error; only open drafts change. |
 | `coach_cancel_draft(draft_id) -> jsonb` | RPC, security definer | Approved drafts cannot be cancelled (55000). |
 | `coach_get_context() -> jsonb` | RPC, security invoker | trainingProfile, latestBodyWeightGrams, activeProgram, its routines, 10 recent completed-session summaries. |
-| `publish_post`, `update_post_snapshot`, `delete_post`, `follow_user`, `unfollow_user`, `respond_follow_request`, `remove_follower`, `block_user`, `unblock_user`, `get_profile_card`, `list_blocked` | RPC, security definer | Signatures per docs/CONTRACTS.md; actor = `auth.uid()`. |
+| `publish_post`, `update_post_snapshot`, `delete_post`, `follow_user`, `unfollow_user`, `respond_follow_request`, `remove_follower`, `block_user`, `unblock_user`, `get_profile_card`, `list_blocked` | RPC, security definer | Signatures per docs/architecture/CONTRACTS.md; actor = `auth.uid()`. |
 | `get_feed(before, limit)`, `search_profiles(query, limit)`, `list_follow_requests()` | RPC, security invoker | RLS applies. |
 | `private.*` | internal (schema not exposed by the API) | Validators and sync/reward/coach internals; only the `is_blocked`/`can_view_*` RLS helpers are executable by `authenticated`. |
 

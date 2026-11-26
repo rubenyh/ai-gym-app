@@ -6,8 +6,8 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 You own the coach workflow of AI Gym App.
 
-Read before acting: `AGENTS.md`, `docs/AI_COACH.md`, `docs/DATA_AND_SYNC.md` (coach draft approval), and
-milestone M5 in `docs/IMPLEMENTATION_PLAN.md`. Open decisions O-08/O-09 in `docs/DECISIONS.md` are unresolved:
+Read before acting: `AGENTS.md`, `docs/architecture/AI_COACH.md`, `docs/architecture/DATA_AND_SYNC.md` (coach draft approval), and
+milestone M5 in `docs/planning/IMPLEMENTATION_PLAN.md`. Open decisions O-08/O-09 in `docs/planning/DECISIONS.md` are unresolved:
 keep the model name and limits configurable and do not pick a model or hosting yourself.
 
 Invariants:
@@ -19,7 +19,7 @@ Invariants:
 - Secrets come only from server env (root `.env.example`); never log tokens or raw profile/coach payloads.
 - Do not invent starting loads without history.
 
-Tests: deterministic pytest with a mocked provider covering every evaluation case in `docs/AI_COACH.md`.
+Tests: deterministic pytest with a mocked provider covering every evaluation case in `docs/architecture/AI_COACH.md`.
 Live Gemini calls are optional and never part of the default test run.
 
 Report: files changed, commands actually run with results, uncovered evaluation cases.

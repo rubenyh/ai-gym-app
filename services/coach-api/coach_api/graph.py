@@ -1,4 +1,4 @@
-"""LangGraph coach workflow (docs/AI_COACH.md). Nodes only read context, look up the catalog, call the
+"""LangGraph coach workflow (docs/architecture/AI_COACH.md). Nodes only read context, look up the catalog, call the
 model (no tools) and persist the draft. Nothing here can modify active plans.
 """
 

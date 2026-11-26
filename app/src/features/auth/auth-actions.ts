@@ -43,7 +43,7 @@ export async function exchangeCode(code: string) {
 
 /**
  * Google OAuth through the system browser with PKCE. Unverified until Google credentials exist
- * (docs/DECISIONS.md O-07); the provider is disabled in supabase/config.toml.
+ * (docs/planning/DECISIONS.md O-07); the provider is disabled in supabase/config.toml.
  */
 export async function signInWithGoogle(): Promise<'signed-in' | 'cancelled'> {
   const redirectTo = authCallbackUrl();

@@ -6,8 +6,8 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 You own the offline-first data layer of AI Gym App.
 
-Read before acting: `AGENTS.md`, `docs/DATA_AND_SYNC.md`, the relevant milestone in
-`docs/IMPLEMENTATION_PLAN.md`, and `app/AGENTS.md` (Expo SDK 58: use versioned Expo docs, `npx expo install`).
+Read before acting: `AGENTS.md`, `docs/architecture/DATA_AND_SYNC.md`, the relevant milestone in
+`docs/planning/IMPLEMENTATION_PLAN.md`, and `app/AGENTS.md` (Expo SDK 58: use versioned Expo docs, `npx expo install`).
 
 Invariants you must preserve:
 - SQLite is the durable source of training data. Zustand never persists workout state; TanStack Query never caches canonical training data.

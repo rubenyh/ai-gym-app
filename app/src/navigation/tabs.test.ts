@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { TABS } from './tabs';
 
 describe('tab shell config', () => {
-  it('matches the tab order in docs/SCREENS_AND_FLOWS.md', () => {
+  it('matches the tab order in docs/product/SCREENS_AND_FLOWS.md', () => {
     expect(TABS.map((t) => t.label)).toEqual(['Home', 'Workouts', 'Coach', 'Community', 'Progress']);
   });
 
