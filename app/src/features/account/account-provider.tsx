@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 
-import { closeAccountDb, deleteAccountDb, openAccountDb } from '@/db/account-db';
+import { closeAccountDb, deleteAccountDb, getOpenAccountDb, openAccountDb } from '@/db/account-db';
 import { supabase } from '@/services/supabase/client';
 
 import { cacheAccount, fetchRemoteAccount, readCachedAccount } from './account-data';
@@ -11,6 +11,8 @@ type AccountContextValue = {
   state: AccountState;
   /** Re-reads the account from the server and refreshes the local cache. */
   refresh: () => Promise<void>;
+  /** Re-reads the local account view only (after an offline settings edit or a pulled change). */
+  reloadLocal: () => Promise<void>;
   /**
    * Signs out of this device. Callers must first warn about unsynced changes (NFR-08, settings screen);
    * `discard: true` deletes this account's local database including unsynced changes.
@@ -36,7 +38,9 @@ async function loadAccountState(userId: string | null): Promise<AccountState> {
   try {
     const account = await fetchRemoteAccount(userId);
     if (account) await cacheAccount(db, account);
-    return resolveAccountState(userId, cached, { ok: true, account });
+    // Show the local view: it keeps unsynced offline settings edits (cacheAccount never overwrites them).
+    const local = account ? await readCachedAccount(db) : null;
+    return resolveAccountState(userId, cached, { ok: true, account: local ?? account });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Server unreachable';
     return resolveAccountState(userId, cached, { ok: false, message });
@@ -76,6 +80,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (userId !== undefined) setLoaded({ userId, state: await loadAccountState(userId) });
   }, [userId]);
 
+  const reloadLocal = useCallback(async () => {
+    const db = userId ? getOpenAccountDb(userId) : null;
+    const account = db ? await readCachedAccount(db) : null;
+    if (!userId || !account) return;
+    setLoaded((prev) =>
+      prev?.userId === userId && prev.state.kind === 'ready' ? { userId, state: { ...prev.state, account } } : prev,
+    );
+  }, [userId]);
+
   const signOut = useCallback(
     async (options?: { discard?: boolean }) => {
       // 'local' clears this device's session even when the network is down. Without an explicit discard
@@ -87,5 +100,5 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     [userId],
   );
 
-  return <AccountContext value={{ state, refresh, signOut }}>{children}</AccountContext>;
+  return <AccountContext value={{ state, refresh, reloadLocal, signOut }}>{children}</AccountContext>;
 }

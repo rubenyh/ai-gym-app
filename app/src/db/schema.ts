@@ -15,6 +15,9 @@ export const accountProfile = sqliteTable('account_profile', {
   visibility: text('visibility', { enum: ['public', 'private'] }).notNull(),
   avatarPath: text('avatar_path'),
   updatedAt: text('updated_at').notNull(),
+  /** Root of the `account_settings` sync aggregate (profile + user_settings + weekly_goals); never deleted. */
+  serverRevision: integer('server_revision'),
+  deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
 });
 
 /** Single row (id = 1). */
@@ -162,7 +165,8 @@ export const sessions = sqliteTable(
   (t) => [
     // SESSION-01: at most one active workout, enforced by the database too.
     uniqueIndex('sessions_one_active_idx').on(t.status).where(sql`status = 'active' AND deleted = 0`),
-    index('sessions_completed_idx').on(t.completedAt),
+    // History pages: total order (completed_at DESC, id DESC) with a composite cursor.
+    index('sessions_history_idx').on(t.completedAt, t.id),
   ],
 );
 
@@ -225,7 +229,7 @@ export const outbox = sqliteTable(
     seq: integer('seq').primaryKey({ autoIncrement: true }),
     opId: text('op_id').notNull().unique(),
     aggregateType: text('aggregate_type', {
-      enum: ['custom_exercise', 'routine', 'program', 'session', 'body_weight', 'coach_approval'],
+      enum: ['custom_exercise', 'routine', 'program', 'session', 'body_weight', 'coach_approval', 'account_settings'],
     }).notNull(),
     aggregateId: text('aggregate_id').notNull(),
     action: text('action', { enum: ['upsert', 'delete'] }).notNull(),

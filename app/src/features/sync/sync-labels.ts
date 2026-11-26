@@ -8,6 +8,7 @@ const KIND: Record<AggregateType, string> = {
   session: 'Workout',
   body_weight: 'Body weight entry',
   coach_approval: 'Coach plan approval',
+  account_settings: 'Profile & settings',
 };
 
 /** "Routine: Push A" — names only, never private notes or values. */

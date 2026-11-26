@@ -714,6 +714,7 @@ export type Database = {
           created_at: string
           length_unit: Database["public"]["Enums"]["length_unit"]
           owner_id: string
+          revision: number
           timezone: string
           updated_at: string
           weight_unit: Database["public"]["Enums"]["weight_unit"]
@@ -722,6 +723,7 @@ export type Database = {
           created_at?: string
           length_unit: Database["public"]["Enums"]["length_unit"]
           owner_id?: string
+          revision?: number
           timezone: string
           updated_at?: string
           weight_unit: Database["public"]["Enums"]["weight_unit"]
@@ -730,6 +732,7 @@ export type Database = {
           created_at?: string
           length_unit?: Database["public"]["Enums"]["length_unit"]
           owner_id?: string
+          revision?: number
           timezone?: string
           updated_at?: string
           weight_unit?: Database["public"]["Enums"]["weight_unit"]
@@ -772,6 +775,8 @@ export type Database = {
       coach_begin_request: {
         Args: {
           p_base_revision: number
+          p_daily_cap?: number
+          p_hourly_limit?: number
           p_input: Json
           p_mode: string
           p_program_id: string
@@ -805,7 +810,10 @@ export type Database = {
       }
       delete_post: { Args: { p_post_id: string }; Returns: undefined }
       follow_user: { Args: { p_target: string }; Returns: string }
-      get_feed: { Args: { p_before: string; p_limit: number }; Returns: Json }
+      get_feed: {
+        Args: { p_before: string; p_before_id: string; p_limit: number }
+        Returns: Json
+      }
       get_profile_card: { Args: { p_handle: string }; Returns: Json }
       get_reward_rules: { Args: never; Returns: Json }
       get_reward_summary: { Args: never; Returns: Json }

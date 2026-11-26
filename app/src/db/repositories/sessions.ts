@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, max, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, max, or, sql } from 'drizzle-orm';
 
 import { grams, reps, restSeconds, sessionDoc, type ExerciseKey, type LoadMode, type SessionDoc } from '@/domain/contracts';
 import type { CatalogRepository, SessionRepository, SetPatch } from '@/domain/repositories';
@@ -104,10 +104,16 @@ export function createSessionRepository(ctx: RepoCtx, catalog: CatalogRepository
           and(
             eq(s.sessions.status, 'completed'),
             eq(s.sessions.deleted, false),
-            opts?.before ? lt(s.sessions.completedAt, opts.before) : undefined,
+            // Composite cursor: rows strictly after (completedAt, id) in (DESC, DESC) order.
+            opts?.before
+              ? or(
+                  lt(s.sessions.completedAt, opts.before.completedAt),
+                  and(eq(s.sessions.completedAt, opts.before.completedAt), lt(s.sessions.id, opts.before.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(desc(s.sessions.completedAt))
+        .orderBy(desc(s.sessions.completedAt), desc(s.sessions.id))
         .limit(opts?.limit ?? 50)
         .all();
       const meta = syncMetaFor(db, 'session');
@@ -317,7 +323,7 @@ export function createSessionRepository(ctx: RepoCtx, catalog: CatalogRepository
             excludeSessionId ? sql`${s.sessions.id} <> ${excludeSessionId}` : undefined,
           ),
         )
-        .orderBy(desc(s.sessions.completedAt), s.sessionExercises.position)
+        .orderBy(desc(s.sessions.completedAt), desc(s.sessions.id), s.sessionExercises.position)
         .get();
       if (!last) return null;
       const sets = db

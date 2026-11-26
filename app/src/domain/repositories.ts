@@ -5,6 +5,7 @@
  * Reads are synchronous snapshots; screens re-read after mutations or via `subscribe`.
  */
 import type {
+  AccountSettingsDoc,
   BodyWeightDoc,
   CoachApprovalDoc,
   CustomExerciseDoc,
@@ -78,7 +79,11 @@ export interface ProgramRepository {
 export interface SessionRepository {
   active(): SessionDoc | null;
   get(id: string): (SessionDoc & SyncMeta) | null;
-  history(opts?: { limit?: number; before?: string }): (SessionDoc & SyncMeta)[];
+  /**
+   * Completed sessions in a total order (completedAt DESC, id DESC). Pass the last row of a page as `before`
+   * to get the next page: equal timestamps at a page boundary are neither skipped nor repeated.
+   */
+  history(opts?: { limit?: number; before?: HistoryCursor }): (SessionDoc & SyncMeta)[];
   /** Throws ActiveSessionExistsError when another session is active (SESSION-01). */
   startEmpty(name?: string): SessionDoc;
   startFromRoutine(routineId: string): SessionDoc;
@@ -104,6 +109,21 @@ export interface SessionRepository {
   clearRestTimer(): void;
 }
 
+export type HistoryCursor = { completedAt: string; id: string };
+
+/** Offline-editable identity/preferences (PROFILE-02, SETTINGS-01). Handle and avatar stay online-only. */
+export type AccountSettingsInput = Pick<AccountSettingsDoc, 'displayName' | 'visibility' | 'weightUnit' | 'lengthUnit' | 'timezone'> & {
+  /** Requested weekly goal; applies from the next local week after the edit (never the current week). */
+  targetDays: number;
+};
+
+export interface AccountSettingsRepository {
+  /** Local view including unsynced edits; `pendingOps > 0` means NOT yet applied on the server. */
+  get(): (AccountSettingsDoc & SyncMeta) | null;
+  /** Saves locally + queues one `account_settings` op (same transaction). No-op when nothing changed. */
+  save(input: AccountSettingsInput): AccountSettingsDoc;
+}
+
 export interface BodyWeightRepository {
   list(): (BodyWeightDoc & SyncMeta)[];
   save(doc: Omit<BodyWeightDoc, 'id'> & { id?: string }): BodyWeightDoc;
@@ -124,6 +144,7 @@ export type Repositories = {
   programs: ProgramRepository;
   sessions: SessionRepository;
   bodyWeight: BodyWeightRepository;
+  accountSettings: AccountSettingsRepository;
   outbox: OutboxRepository;
   /** Last server reward summary (written by the sync worker after push/pull; display only). */
   rewardCache: { get(): RewardSummary | null; set(summary: RewardSummary): void };

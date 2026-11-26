@@ -15,6 +15,13 @@
       "when": 1795635324988,
       "tag": "0001_m2_training_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795639853690,
+      "tag": "0002_m3_account_settings_sync",
+      "breakpoints": true
     }
   ]
 }

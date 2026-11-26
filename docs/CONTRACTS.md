@@ -16,7 +16,9 @@ contract only by editing the code **and** this page in the same commit.
   leading zeros kept); personal exercises `custom:<uuid>`.
 - **Units.** Weight in integer grams everywhere (local, server, snapshots). Units are display/input only.
 - **Aggregates.** `custom_exercise`, `routine`, `program`, `session`, `body_weight` sync as whole documents
-  (root + children). `coach_approval` is a command-only aggregate (never pulled). Server keeps one row per
+  (root + children). `account_settings` (id = user id; display name, visibility, units, timezone, weekly-goal
+  history) syncs the same way so these edits work offline; it is never deleted. Handle and avatar stay
+  online-only. `coach_approval` is a command-only aggregate (never pulled). Server keeps one row per
   aggregate with typed root columns and a validated `doc jsonb` holding children (D-23).
 - **Revisions.** Server assigns `revision` (1, 2, …) per aggregate. Local rows keep `server_revision`
   (null = never acknowledged). Deletes are tombstones (`deleted = true`, revision bumped).
@@ -66,3 +68,14 @@ Supabase Auth and reads context with the same user token (RLS), never a client-s
 - Server weekly bonus places a session by `completedAt` in that week's frozen goal timezone; the client's
   provisional view uses the stored `localDate`. They differ only for sessions completed near midnight after a
   timezone change, and the server value wins once synced.
+- `account_settings` (2026-11-25, supersedes D-28): revision = `user_settings.revision`; any write to its
+  fields (sync_push, onboarding, `schedule_weekly_goal`, direct writes, the timezone carry) bumps it and logs a
+  change. On push only the last `weeklyGoals` entry is read: if its target differs from the latest server row,
+  it applies from `max(entry.effectiveWeek, next local week at arrival)`, never the current or a past week;
+  later scheduled rows take the new target. The pulled document reports the week actually used. A device that
+  never received a revision (upgraded M1 cache) pushes with `baseRevision = null` and gets a recoverable conflict.
+- A reused `opId` returns the stored receipt (`duplicate`) even when the payload differs; the new payload is
+  never applied. The app cannot produce this (random op ids, payload frozen with the id).
+- `SessionRepository.history` orders by `(completedAt DESC, id DESC)`; the `before` cursor is that pair.
+- The client sync RPC adapter is bound to the account whose database it serves; a session of another user
+  pauses sync (auth) instead of sending or pulling.

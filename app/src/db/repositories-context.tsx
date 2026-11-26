@@ -16,14 +16,28 @@ const Ctx = createContext<Value>(null);
  * worker. Renders children in every account state; only `ready` screens may call `useRepositories`.
  */
 export function RepositoriesProvider({ children }: { children: ReactNode }) {
-  const { state } = useAccount();
+  const { state, reloadLocal } = useAccount();
   const userId = state.kind === 'ready' ? state.userId : null;
   const repos = useMemo(() => {
     const db = userId ? getOpenAccountDb(userId) : null;
     return db ? createRepositories(db) : null;
   }, [userId]);
   // Constructed without side effects; started/stopped by the effect (one worker per account).
-  const sync = useMemo(() => (repos ? createAppSyncEngine(repos) : null), [repos]);
+  // The RPC adapter is bound to this account: a request never goes out under another account's session.
+  const sync = useMemo(() => (repos && userId ? createAppSyncEngine(repos, userId) : null), [repos, userId]);
+
+  // Offline settings edits and pulled settings changes update the account view (units, goals, visibility).
+  useEffect(() => {
+    if (!repos) return;
+    let last = JSON.stringify(repos.accountSettings.get());
+    return repos.subscribe(() => {
+      const next = JSON.stringify(repos.accountSettings.get());
+      if (next !== last) {
+        last = next;
+        void reloadLocal();
+      }
+    });
+  }, [repos, reloadLocal]);
 
   useEffect(() => {
     if (!sync) return;

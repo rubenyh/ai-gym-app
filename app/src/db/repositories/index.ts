@@ -5,6 +5,7 @@ import { bodyWeightDoc, rewardSummary, type RewardSummary } from '@/domain/contr
 import type { BodyWeightRepository, OutboxRepository, Repositories } from '@/domain/repositories';
 
 import * as s from '../schema';
+import { createAccountSettingsRepository } from './account-settings';
 import { createCatalogRepository, seedCatalog, type CatalogAsset } from './catalog';
 import { enqueue, parse, syncMetaFor, type RepoCtx } from './context';
 import { markDeleted, readBodyWeight, type Db } from './docs';
@@ -56,6 +57,7 @@ export function createRepositories(db: Db, opts: RepositoryOptions = {}): LocalR
     programs: createProgramRepository(ctx),
     sessions: createSessionRepository(ctx, catalog),
     bodyWeight: createBodyWeightRepository(ctx),
+    accountSettings: createAccountSettingsRepository(ctx),
     outbox: createOutboxRepository(db),
     rewardCache: {
       get() {
@@ -84,7 +86,7 @@ function createBodyWeightRepository(ctx: RepoCtx): BodyWeightRepository {
         .select()
         .from(s.bodyWeightEntries)
         .where(eq(s.bodyWeightEntries.deleted, false))
-        .orderBy(desc(s.bodyWeightEntries.measuredAt))
+        .orderBy(desc(s.bodyWeightEntries.measuredAt), desc(s.bodyWeightEntries.id))
         .all()
         .map((r) => ({ id: r.id, measuredAt: r.measuredAt, weightGrams: r.weightGrams, ...meta(r.id, r.serverRevision) }));
     },

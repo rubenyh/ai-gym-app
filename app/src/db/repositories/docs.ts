@@ -6,6 +6,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import type {
+  AccountSettingsDoc,
   AggregateDocMap,
   AggregateType,
   BodyWeightDoc,
@@ -28,6 +29,7 @@ export const roots = {
   program: s.programs,
   session: s.sessions,
   body_weight: s.bodyWeightEntries,
+  account_settings: s.accountProfile,
 } as const;
 
 export type RootMeta = { serverRevision: number | null; deleted: boolean };
@@ -151,6 +153,23 @@ export function readBodyWeight(db: Db, id: string): BodyWeightDoc | null {
   return r ? { id: r.id, measuredAt: r.measuredAt, weightGrams: r.weightGrams } : null;
 }
 
+/** Profile fields + the single user_settings row + the whole local goal history (ascending). */
+export function readAccountSettings(db: Db, id: string): AccountSettingsDoc | null {
+  const p = db.select().from(s.accountProfile).where(eq(s.accountProfile.id, id)).get();
+  const st = db.select().from(s.userSettings).where(eq(s.userSettings.id, 1)).get();
+  if (!p || !st) return null;
+  const goals = db.select().from(s.weeklyGoals).orderBy(asc(s.weeklyGoals.effectiveWeek)).all();
+  return {
+    id: p.id,
+    displayName: p.displayName,
+    visibility: p.visibility,
+    weightUnit: st.weightUnit,
+    lengthUnit: st.lengthUnit,
+    timezone: st.timezone,
+    weeklyGoals: goals.map((g) => ({ effectiveWeek: g.effectiveWeek, targetDays: g.targetDays, timezone: g.timezone })),
+  };
+}
+
 export function readDoc<T extends SyncedType>(db: Db, type: T, id: string): AggregateDocMap[T] | null {
   const readers: { [K in SyncedType]: (db: Db, id: string) => AggregateDocMap[K] | null } = {
     custom_exercise: readCustomExercise,
@@ -158,6 +177,7 @@ export function readDoc<T extends SyncedType>(db: Db, type: T, id: string): Aggr
     program: readProgram,
     session: readSession,
     body_weight: readBodyWeight,
+    account_settings: readAccountSettings,
   };
   return readers[type](db, id) as AggregateDocMap[T] | null;
 }
@@ -214,6 +234,16 @@ export function writeDoc<T extends SyncedType>(
       }
       return;
     }
+    case 'account_settings': {
+      const { id, displayName, visibility, weightUnit, lengthUnit, timezone, weeklyGoals } = doc as AccountSettingsDoc;
+      const r = db.update(s.accountProfile).set({ displayName, visibility, ...meta }).where(eq(s.accountProfile.id, id)).run();
+      // Not cached yet (never loaded online): the account loader caches the whole account first.
+      if (!changes(r)) return;
+      db.update(s.userSettings).set({ weightUnit, lengthUnit, timezone, updatedAt }).where(eq(s.userSettings.id, 1)).run();
+      db.delete(s.weeklyGoals).run();
+      if (weeklyGoals.length) db.insert(s.weeklyGoals).values(weeklyGoals).run();
+      return;
+    }
     case 'body_weight': {
       const values = { ...(doc as BodyWeightDoc), ...meta };
       db.insert(s.bodyWeightEntries).values(values).onConflictDoUpdate({ target: s.bodyWeightEntries.id, set: values }).run();
@@ -224,6 +254,7 @@ export function writeDoc<T extends SyncedType>(
 
 /** Removes the aggregate row; children cascade. Used once a delete is acknowledged or a tombstone arrives. */
 export function purgeDoc(db: Db, type: SyncedType, id: string): void {
+  if (type === 'account_settings') return; // never deleted
   const t = roots[type];
   db.delete(t).where(eq(t.id, id)).run();
   if (type === 'session') db.delete(s.restTimer).where(eq(s.restTimer.sessionId, id)).run();

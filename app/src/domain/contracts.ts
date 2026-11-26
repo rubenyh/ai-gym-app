@@ -160,7 +160,27 @@ export const coachApprovalDoc = z.object({
 });
 export type CoachApprovalDoc = z.infer<typeof coachApprovalDoc>;
 
-export const aggregateType = z.enum(['custom_exercise', 'routine', 'program', 'session', 'body_weight', 'coach_approval']);
+/**
+ * Identity/preferences that work offline (PROFILE-02, SETTINGS-01; supersedes D-28). `id` is the account's
+ * user id. Handle and avatar are NOT part of it (online-only: server uniqueness / upload).
+ * `weeklyGoals` is the frozen goal history (ascending). On push the server reads only the LAST entry as the
+ * requested goal and applies it from max(effectiveWeek, next local week at arrival); past and current
+ * weeks never change. Never deleted.
+ */
+export const weeklyGoalEntry = z.object({ effectiveWeek: localDate, targetDays: z.number().int().min(1).max(7), timezone: z.string().min(1).max(64) });
+export type WeeklyGoalEntry = z.infer<typeof weeklyGoalEntry>;
+export const accountSettingsDoc = z.object({
+  id: uuid,
+  displayName: z.string().trim().min(1).max(50),
+  visibility: z.enum(['public', 'private']),
+  weightUnit: z.enum(['kg', 'lb']),
+  lengthUnit: z.enum(['cm', 'ft_in']),
+  timezone: z.string().min(1).max(64),
+  weeklyGoals: z.array(weeklyGoalEntry).max(1000),
+});
+export type AccountSettingsDoc = z.infer<typeof accountSettingsDoc>;
+
+export const aggregateType = z.enum(['custom_exercise', 'routine', 'program', 'session', 'body_weight', 'coach_approval', 'account_settings']);
 export type AggregateType = z.infer<typeof aggregateType>;
 
 export type AggregateDocMap = {
@@ -170,6 +190,7 @@ export type AggregateDocMap = {
   session: SessionDoc;
   body_weight: BodyWeightDoc;
   coach_approval: CoachApprovalDoc;
+  account_settings: AccountSettingsDoc;
 };
 
 export const docSchemas = {
@@ -179,6 +200,7 @@ export const docSchemas = {
   session: sessionDoc,
   body_weight: bodyWeightDoc,
   coach_approval: coachApprovalDoc,
+  account_settings: accountSettingsDoc,
 } as const;
 
 // ---------------------------------------------------------------- outbox and sync protocol
