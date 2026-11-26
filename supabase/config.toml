@@ -150,7 +150,8 @@ enabled = true
 site_url = "aigym://"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # App deep links (app.json scheme "aigym"): auth/callback, reset-password.
-additional_redirect_urls = ["aigym://**"]
+# Local Expo web dev server (npm run web) on its default port; local stack only.
+additional_redirect_urls = ["aigym://**", "http://localhost:8081/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to the local API URL (http://127.0.0.1:<port>/auth/v1).
