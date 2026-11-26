@@ -60,6 +60,50 @@ workouts finished in the same millisecond at a page boundary can be skipped; lik
 permission only), `@react-native-community/netinfo` to the M0/M1 natives. After O-13: `npm run android`, then run
 the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../app/maestro/README.md)).
 
+## Review pass (2026-11-25)
+
+Independent review by five parallel reviewers (data/sync, security, coach, screens, performance/docs); fixes
+committed with regression tests. Findings and resolutions:
+
+| Severity | Finding | Fix |
+| --- | --- | --- |
+| High | Sync adapter used whichever session was current: an account switch mid-cycle could push A's ops as B or pull B's data into A's DB (`app/src/services/sync/supabase-rpc.ts`) | adapter bound to one user id; foreign session pauses sync |
+| High | Records/XP/"new record" computed from the last 50 sessions only (`features/progress/use-progress-data.ts`) | read full history |
+| High | Coach approval compared the client-sent base, so a stale draft could be re-based; edited content not revalidated | base must equal the draft's; content checked against stored draft (D-32) |
+| High | Late model result could report a cancelled draft as ready; daily operator cap per process only | `coach_save_draft` pending-only transitions; DB-backed caps (D-33) |
+| High (perf) | Hidden Home/Progress recomputed history on every set save; logger rerendered every row each second | focus-gated reads; isolated clock/timer components |
+| Medium | History, feed and comments paged by timestamp only (ties skipped) | `(timestamp, id)` keyset cursors + index; API and SQLite tie tests |
+| Medium | Profile/settings edits online-only despite PROFILE-02/SETTINGS-01 offline use (D-28) | `account_settings` sync aggregate (D-30) |
+| Medium | Startup refresh overwrote pending settings edits | skipped while pending/conflict |
+| Medium | Avatars readable across blocks; `has_weekly_goal` leaked other accounts' onboarding state; anon execute on helpers | block-aware avatar policy, caller-only helper, grant cleanup |
+| Medium | Coach 90 s budget did not cover DB calls; Gemini errors unmapped; stuck `pending` polled forever | one deadline; error mapping tested through the real adapter; bounded polling with re-ask |
+| Medium | "Delete both" deleted the workout when post deletion failed; missing confirmations; photo failure spinner | fixed with RNTL tests |
+| Medium | Feed like/comment counts ran per-row RLS | definer count helper |
+| Low | Post-reset 502 (Kong stale upstream IPs); back-to-back suites hit local sign-in limit | `scripts/supabase-ready.sh`; local limit 300 (D-34) |
+| Low (accepted) | Direct `coach_save_draft` by a user; PNG-typed non-image uploads served as image; private post counts on profile cards; files left on account deletion (O-11) | documented |
+
+Dependency audit: `npm audit` reports 20 (prod tree) / 26 (full) moderate advisories, all in build/test tooling
+(minimatch via `@expo/fingerprint`, jest/glob, esbuild via drizzle-kit), not app runtime; suggested fixes are
+breaking downgrades and were not applied. `pip-audit` unavailable, so no Python advisory scan was run.
+
+Final verification after the review (fresh `supabase db reset --local`, then `scripts/supabase-ready.sh`):
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck`, `npm run lint` (app) | pass, 0 problems |
+| `npm test` (app) | 21 suites / 140 tests pass; integration suite skipped by design |
+| `npm run test:integration` (app, local stack) | 10 / 10 pass |
+| `supabase db lint --local --level warning` | no schema errors |
+| `supabase test db` | 13 files / 248 assertions pass |
+| `node --test supabase/tests/api/*.test.mjs` | 21 / 21 pass (run twice, back to back with the other suites) |
+| coach `pytest` (local env exported) | 47 pass |
+| Mermaid diagrams | structural check only (no browser renderer available) |
+| Not run | native builds, `expo export`, `expo-doctor`, Maestro, live Gemini, device performance |
+
+Known limits after review: two workouts or posts can still race only at the database level for direct writes
+(app uses RPCs); a tiny window exists between the session check and a request inside supabase-js; hourly coach cap
+verified sequentially, not under real concurrency; the floating resume bar position over native tabs needs a device.
+
 ## Execution DAG (2026-11-25, M2–M7 session)
 
 Contracts are frozen in [CONTRACTS.md](CONTRACTS.md). Tasks run in parallel as soon as prerequisites are done;
@@ -104,7 +148,7 @@ flowchart TD
 **Requirements:** NFR-07, NFR-12. **Depends on:** nothing.
 
 Work:
-- Run `npm run reset-project` in `app/` (moves starter to `app/example/`, which is gitignored), or delete
+- (Done by hand, D-12; the `reset-project` script no longer exists.) Run `npm run reset-project` in `app/` (moves starter to `app/example/`, which is gitignored), or delete
   starter screens deliberately; keep `src/app/` thin.
 - Fix the 3 current `npx tsc --noEmit` errors; configure ESLint (`npm run lint`) and jest-expo + RNTL with
   one real test; add `typecheck`/`test` npm scripts and record them in [AGENTS.md](../AGENTS.md#commands-verified-against-this-repository-on-2026-11-25).

@@ -70,11 +70,9 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | DB lint | `supabase db lint --local --level warning` | no errors |
 | DB types | `supabase gen types typescript --local --schema public > app/src/services/supabase/database.types.ts` | regenerate after each migration |
 | Local SQLite migrations | `npm run db:generate` (in `app/`) | Drizzle; regenerate after editing `app/src/db/schema.ts` |
-| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api`, Python 3.12 venv) | 32 tests collected; setup in [services/coach-api/README.md](services/coach-api/README.md) |
 | Catalog import | `node scripts/import-exercises.mjs <clone-of-exercises-dataset>` (in `app/`) | writes `assets/catalog/exercises.v1.json` (metadata only, pinned SHA in ATTRIBUTION.md) |
-| Sync end-to-end | `set -a; eval "$(supabase status -o env)"; set +a; npm run test:integration` (in `app/`) | passes, 7 tests; real engine + repositories vs local stack; refuses non-local URLs |
-| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per its README) | passes; integration test runs only when local Supabase env vars are exported |
-| Kong after reset | `docker restart supabase_kong_ai-gym-app` | needed when Storage/REST return 502 after `supabase db reset` (CLI 2.75) |
+| Sync end-to-end | `set -a; eval "$(supabase status -o env)"; set +a; npm run test:integration` (in `app/`) | passes, 10 tests; real engine + repositories vs local stack; refuses non-local URLs |
+| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per [its README](services/coach-api/README.md)) | passes, 47 with local env exported (integration tests skip otherwise) |
 
 Full local setup (prerequisites, env files, stack, app, coach): [docs/SETUP.md](docs/SETUP.md).
 Update this table when a command is added or its status changes. Never document a command you have

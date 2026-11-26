@@ -204,3 +204,13 @@ Migrations: `app/src/db/migrations/` (Drizzle), run before any query.
 | weekly_goals | effective_week (PK), target_days, timezone | Mirror of own goal history. |
 
 Device training tables, `outbox` and `sync_state` are owned by the app data layer (`app/src/db/schema.ts`).
+
+## Review additions (2026-11-25, migrations 20261125180000–20261125220000)
+
+| Object | Migration | Purpose / access |
+| --- | --- | --- |
+| `account_settings` sync aggregate (no new table) | `…180000_account_settings_sync` | Offline edits of display name, visibility, units, timezone and weekly goal arrive via `sync_push`; `private.apply_account_settings` writes `profiles`/`user_settings`/`weekly_goals` and schedules goals only for future weeks (returns the week used). `private.touch_account_settings` + trigger `account_settings_changed` bump the aggregate revision and change log when those rows change. Handle and avatar remain direct (online) updates. |
+| `private.can_view_avatar(name)` + policy `avatars_select_unblocked` | `…190000_security_hardening` | Avatar objects readable by signed-in users only when neither side blocked the other (replaces the any-signed-in policy). Also: `has_weekly_goal` answers only for the caller; anon loses execute on helpers/trigger functions and reward sequences; default privileges no longer grant future `public` objects to anon. |
+| `private.coach_daily_usage` (UTC day, count) | `…200000_coach_hardening` | Atomic operator daily cap across processes; not exposed via the API. `coach_begin_request` also enforces the per-user hourly limit (≤ 10, the service may only lower it) and expires `pending` requests older than 5 minutes as retryable failures. `coach_save_draft` only transitions `pending` drafts. `coach_approval` requires the draft's own base revision and revalidates edited content against the stored draft. |
+| `public.get_feed(p_before, p_before_id, p_limit)` | `…220000_feed_cursor_and_counts` | Keyset cursor `(published_at, id)`; replaces `get_feed(p_before, p_limit)`. Counts via `private.post_counts(post_id)` (definer, reachable only for RLS-visible posts in the feed query). |
+| Expression index on sessions `coalesce(completed_at, started_at)` | `…210000_performance_indexes` | Weekly reward reconciliation range scans. |
