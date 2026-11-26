@@ -60,6 +60,32 @@ workouts finished in the same millisecond at a page boundary can be skipped; lik
 permission only), `@react-native-community/netinfo` to the M0/M1 natives. After O-13: `npm run android`, then run
 the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../app/maestro/README.md)).
 
+## Android build attempt via WSL (2026-11-25/26)
+
+Route: Ubuntu WSL2 (Linux paths, no 260-char limit), user-space toolchain (Node 24.13, Temurin 17, Android
+cmdline-tools, NDK 27.1.12297006, CMake 3.22.1, platforms 36/37), fresh clone of `main` at `34ab8bb` on ext4,
+`npm ci --ignore-scripts` (dev-only `better-sqlite3` needs `make`, not installed: no sudo), `expo prebuild`,
+`./gradlew assembleDebug -PreactNativeArchitectures=x86_64`.
+
+| Attempt | Furthest point | Stopped by |
+| --- | --- | --- |
+| 1 | `:expo:generateInlineModules` | my malformed `gradle.properties` append (fixed) |
+| 2 | `:react-native-screens:buildCMakeDebug` | WSL kernel OOM kill of Gradle JVM (7.8 GB VM cap) |
+| 3–4 | configuration / `:react-native-gesture-handler:compileDebugKotlin` | Ubuntu instance torn down (`Wsl/Service/E_UNEXPECTED`); host free RAM 0.7–1.4 GB, commit ~33/36 GB; once by Modern Standby overnight |
+| 5 | `:react-native-reanimated` native C++ (22 compiler processes) | OOM kill (2 workers did not bound ninja) |
+| 6 | native C++ with `taskset -c 0-2` | `Wsl/Service/E_UNEXPECTED` again (host memory) |
+
+Kotlin/Java compilation of all modules completed (incremental outputs kept in the WSL clone); **no APK was
+produced**, so no device check (M0/M1 checklists, Maestro, set-save latency) has been executed.
+
+Needed to finish (user action, pick one):
+1. Free host memory: close other heavy apps (VS Code windows, browsers) and stop Docker/Supabase during the build,
+   then rerun the same incremental command; or
+2. Add `%USERPROFILE%\.wslconfig` with e.g. `[wsl2]` `memory=8GB` `swap=8GB` `processors=4`, run `wsl --shutdown`,
+   rerun (global WSL setting; affects Docker Desktop); or
+3. Enable Windows long paths (admin: `LongPathsEnabled=1`) and build natively on Windows; or
+4. EAS Build (needs an Expo account, O-06).
+
 ## Risk closure (2026-11-25)
 
 | Risk | Result | Evidence |
