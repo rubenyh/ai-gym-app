@@ -172,3 +172,15 @@ def test_cancel_while_generating_is_not_flipped_by_late_result():
     draft_id, late = asyncio.run(go())
     assert late.json()["status"] == "cancelled" and late.json()["draft"] is None
     assert h.data.drafts[draft_id]["status"] == "cancelled"
+
+
+def test_cors_only_for_configured_web_origins(harness):
+    preflight = {"Origin": "http://localhost:8081", "Access-Control-Request-Method": "POST",
+                 "Access-Control-Request-Headers": "authorization,content-type"}
+    closed = harness().client.options("/v1/coach/drafts", headers=preflight)
+    assert "access-control-allow-origin" not in closed.headers
+    h = harness(cors_origins=("http://localhost:8081",))
+    opened = h.client.options("/v1/coach/drafts", headers=preflight)
+    assert opened.headers["access-control-allow-origin"] == "http://localhost:8081"
+    other = h.client.options("/v1/coach/drafts", headers={**preflight, "Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in other.headers

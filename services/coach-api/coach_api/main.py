@@ -9,6 +9,7 @@ from typing import Awaitable, Callable
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .catalog import Exercise, load_catalog
@@ -61,6 +62,14 @@ def create_app(
             return SupabaseData(http, settings.supabase_url or "", settings.supabase_anon_key or "", token)
 
     app = FastAPI(title="AI Gym coach API")
+    if settings.cors_origins:
+        # Bearer tokens only, no cookies: credentials stay off.
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(settings.cors_origins),
+            allow_methods=["GET", "POST"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException):

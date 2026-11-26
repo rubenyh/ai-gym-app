@@ -49,6 +49,8 @@ class Settings:
     user_requests_per_hour: int
     daily_request_cap: int
     catalog_path: Path
+    # Browser origins allowed to call the API (web app). Empty = no CORS headers (native clients need none).
+    cors_origins: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -68,4 +70,5 @@ class Settings:
             user_requests_per_hour=int(env("COACH_USER_REQUESTS_PER_HOUR", "10")),
             daily_request_cap=int(env("COACH_DAILY_REQUEST_CAP", "200")),
             catalog_path=Path(env("COACH_CATALOG_PATH") or DEFAULT_CATALOG),
+            cors_origins=tuple(o.strip() for o in env("COACH_CORS_ORIGINS", "").split(",") if o.strip()),
         )
