@@ -14,14 +14,16 @@ config.resolver.sourceExts.push('sql');
 
 // expo-sqlite on web needs SharedArrayBuffer, which browsers expose only to cross-origin isolated pages.
 // Dev server only: a deployed web build must send the same two headers from its host.
-const enhanceMiddleware = config.server.enhanceMiddleware;
-config.server.enhanceMiddleware = (middleware, metroServer) => {
-  const enhanced = enhanceMiddleware ? enhanceMiddleware(middleware, metroServer) : middleware;
-  return (req, res, next) => {
-    res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    return enhanced(req, res, next);
-  };
+// Set on every response of this process, not via config.server.enhanceMiddleware: Expo CLI answers `/` from its
+// manifest middleware ahead of Metro, so `/` (the URL people open first) never got them and loaded non-isolated.
+const http = require('node:http');
+const writeHead = http.ServerResponse.prototype.writeHead;
+http.ServerResponse.prototype.writeHead = function (...args) {
+  if (!this.headersSent && !this.hasHeader('Cross-Origin-Opener-Policy')) {
+    this.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    this.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  }
+  return writeHead.apply(this, args);
 };
 
 module.exports = config;
