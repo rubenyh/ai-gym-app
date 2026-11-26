@@ -15,9 +15,13 @@ import ratingRiv from '@/assets/rive/rating.riv';
 
 import { PET_FRAME, petStageName } from './pet';
 
-// Serve the runtime from this app's own origin instead of the default public CDN (no third-party scripts).
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// Serve the runtime (and its fallback build) from this app's own origin. The defaults are public CDNs (unpkg,
+// jsdelivr), and the web build must not load third-party code (the session lives in localStorage).
+/* eslint-disable @typescript-eslint/no-require-imports */
 RuntimeLoader.setWasmUrl(Asset.fromModule(require('@rive-app/canvas/rive.wasm')).uri);
+RuntimeLoader.setWasmFallbackUrl(Asset.fromModule(require('@rive-app/canvas/rive_fallback.wasm')).uri);
+/* eslint-enable @typescript-eslint/no-require-imports */
+RuntimeLoader.setWasmThreadsUrl(null);
 
 /** Web body: same .riv file and `rating` view-model number as native, drawn by the canvas runtime. */
 export function RivePet({ stage, onFail }: { stage: number; onFail: (reason?: string) => void }) {
