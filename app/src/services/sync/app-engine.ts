@@ -8,11 +8,9 @@ import { supabase } from '@/services/supabase/client';
 import { createSyncEngine, type SyncEngine } from './engine';
 import { createSupabaseSyncRpc } from './supabase-rpc';
 
-export const supabaseSyncRpc = createSupabaseSyncRpc(supabase);
-
-/** Engine for the signed-in account; triggers attach on start and detach on stop. */
-export function createAppSyncEngine(repos: LocalRepositories): SyncEngine {
-  const engine = createSyncEngine(repos, supabaseSyncRpc);
+/** Engine for the signed-in account `userId`; triggers attach on start and detach on stop. */
+export function createAppSyncEngine(repos: LocalRepositories, userId: string): SyncEngine {
+  const engine = createSyncEngine(repos, createSupabaseSyncRpc(supabase, userId));
   let detach: (() => void) | null = null;
   return {
     ...engine,

@@ -5,8 +5,12 @@ import type { SessionDoc } from '@/domain/contracts';
 import type { Repositories, RestTimer } from '@/domain/repositories';
 import { GRAMS_PER_LB } from '@/domain/units';
 
+import { deletePost, findPostsForSession } from '@/features/community/api';
+import { router } from 'expo-router';
+
+import { ActiveSessionBar } from './active-session-bar';
 import { REPS_REQUIRED } from './common';
-import { readHistoryPages } from './history-screen';
+import { readHistoryPages, SessionDetailScreen } from './history-screen';
 import { LoggerScreen } from './logger-screen';
 import { WorkoutsHome } from './workouts-home';
 
@@ -70,6 +74,7 @@ const mockRepos = {
     startFromRoutine: jest.fn(),
     startRestTimer: jest.fn(),
     clearRestTimer: jest.fn(),
+    delete: jest.fn(),
   },
   programs: { active: jest.fn(() => null), list: jest.fn(() => []) },
   routines: { list: jest.fn(() => []) },
@@ -86,6 +91,8 @@ jest.mock('@/features/account/account-provider', () => ({
 jest.mock('@/features/community/api', () => ({ deletePost: jest.fn(), findPostsForSession: jest.fn() }));
 jest.mock('@/features/progress/summary-rewards', () => ({ SummaryRewards: () => null }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), navigate: jest.fn() } }));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -138,6 +145,55 @@ describe('LoggerScreen', () => {
   });
 });
 
+describe('LoggerScreen performance', () => {
+  it('does not re-query previous results on clock ticks or set writes', async () => {
+    jest.useFakeTimers({ now: T0 });
+    mockState.timer = { sessionId: SESSION_ID, endsAt: new Date(T0 + 60_000).toISOString(), durationSeconds: 60 };
+    const view = await render(<LoggerScreen sessionId={SESSION_ID} />);
+    expect(mockRepos.sessions.previousResults).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText('Rest 0:57')).toBeTruthy();
+    // A committed set edit re-renders the logger with a new session snapshot.
+    mockState.session = makeSession({ reps: 8 });
+    await view.rerender(<LoggerScreen sessionId={SESSION_ID} />);
+    expect(mockRepos.sessions.previousResults).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ActiveSessionBar', () => {
+  it('is hidden without an active workout and resumes it from any tab', async () => {
+    const empty = await render(<ActiveSessionBar />);
+    expect(screen.queryByLabelText(/Resume active workout/)).toBeNull();
+    await empty.unmount();
+
+    mockState.active = makeSession();
+    await render(<ActiveSessionBar />);
+    await fireEvent.press(screen.getByLabelText('Resume active workout Push day'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/training/session/[id]', params: { id: SESSION_ID } });
+  });
+});
+
+describe('SessionDetailScreen delete', () => {
+  it('keeps the workout when deleting its published post fails (no false "both deleted")', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockState.session = { ...makeSession({ reps: 5, completed: true }), status: 'completed', completedAt: new Date(T0 + 60_000).toISOString() };
+    jest.mocked(findPostsForSession).mockResolvedValue([{ id: 'p1', publishedAt: '2026-11-25', photoPath: null }]);
+    jest.mocked(deletePost).mockRejectedValue(new Error('offline'));
+    await render(<SessionDetailScreen sessionId={SESSION_ID} />);
+    await fireEvent.press(screen.getByText('Delete workout'));
+
+    const deleteBoth = alert.mock.calls.at(-1)![2]!.find((b) => b.text === 'Delete both')!;
+    await act(async () => {
+      await deleteBoth.onPress!();
+    });
+    expect(mockRepos.sessions.delete).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenLastCalledWith('Post not deleted', expect.any(String));
+  });
+});
+
 describe('WorkoutsHome', () => {
   it('offers resume or discard when a workout is already active', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -153,16 +209,16 @@ describe('WorkoutsHome', () => {
 });
 
 describe('readHistoryPages', () => {
-  it('follows the completedAt cursor across pages', () => {
+  it('follows the (completedAt, id) cursor across pages', () => {
     const all = Array.from({ length: 45 }, (_, i) => ({ id: String(i), completedAt: new Date(T0 - i * 60_000).toISOString() }));
-    const history = jest.fn(({ limit, before }: { limit: number; before?: string }) =>
-      all.filter((s) => !before || s.completedAt < before).slice(0, limit),
+    const history = jest.fn(({ limit, before }: { limit: number; before?: { completedAt: string; id: string } }) =>
+      all.filter((s) => !before || s.completedAt < before.completedAt).slice(0, limit),
     );
     const repos = { sessions: { history } } as unknown as Repositories;
     expect(readHistoryPages(repos, 1)).toMatchObject({ hasMore: true });
     const two = readHistoryPages(repos, 2);
     expect(two.hasMore).toBe(false);
     expect(two.sessions.map((s) => s.id)).toEqual(all.map((s) => s.id));
-    expect(history).toHaveBeenLastCalledWith({ limit: 30, before: all[29].completedAt });
+    expect(history).toHaveBeenLastCalledWith({ limit: 30, before: { completedAt: all[29].completedAt, id: all[29].id } });
   });
 });

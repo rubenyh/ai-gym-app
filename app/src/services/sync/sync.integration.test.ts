@@ -239,4 +239,76 @@ function faulty(rpc: SyncRpc): Faulty {
     expect(res).toMatchObject({ status: 'rejected', code: 'forbidden' });
     expect(await serverRow('sessions', sessionId)).toMatchObject({ owner_id: userIds[0] });
   });
+
+  it('duplicate op ids (two clients at once, or a reused id with another payload) apply exactly once', async () => {
+    const id = randomUUID();
+    const op: PushOp = { opId: randomUUID(), aggregateType: 'routine', aggregateId: id, action: 'upsert', baseRevision: null, doc: { ...routine(), id, name: 'Once' } };
+    const [c1, c2] = [createSupabaseSyncRpc(phone1.client), createSupabaseSyncRpc(await signIn('a'))];
+    const results = (await Promise.all([c1.push(op), c2.push(op)])) as { status: string; revision: number }[];
+    expect(results.map((r) => r.status).sort()).toEqual(['applied', 'duplicate']);
+    expect(results.map((r) => r.revision)).toEqual([1, 1]);
+    // Same op id, different payload: the stored receipt is returned and the new payload is NOT applied.
+    // (The app never produces this: op ids are random and frozen with their payload.)
+    const reused = (await c1.push({ ...op, doc: { ...(op.doc as RoutineDoc), name: 'Other payload' } })) as { status: string };
+    expect(reused.status).toBe('duplicate');
+    expect(await serverRow('routines', id)).toMatchObject({ revision: 1, name: 'Once' });
+  });
+
+  it('reward corrections follow synced edits and deletes of a completed session', async () => {
+    const { repos, engine } = phone1;
+    const s = repos.sessions.startEmpty();
+    const ex = repos.sessions.addExercise(s.id, 'catalog:0025');
+    const set = repos.sessions.active()!.exercises.find((e) => e.id === ex)!.sets[0];
+    repos.sessions.updateSet(s.id, set.id, { reps: 5, loadGrams: 50000 });
+    repos.sessions.setCompleted(s.id, set.id, true);
+    repos.sessions.finish(s.id);
+    await engine.syncNow();
+    expect(repos.rewardCache.get()?.awardedSessionIds).toContain(s.id);
+    const xp = repos.rewardCache.get()!.totalXp;
+
+    // Edit: no completed set any more -> award revoked.
+    const doc = repos.sessions.get(s.id)!;
+    repos.sessions.saveCompleted({ ...sessionDoc.parse(doc), exercises: doc.exercises.map((e) => ({ ...e, sets: e.sets.map((x) => ({ ...x, completed: false, completedAt: null })) })) });
+    await engine.syncNow();
+    expect(repos.rewardCache.get()?.awardedSessionIds).not.toContain(s.id);
+    expect(repos.rewardCache.get()!.totalXp).toBeLessThan(xp);
+
+    // Restore by editing it back, then delete: restored, then revoked again; never double-counted.
+    repos.sessions.saveCompleted(sessionDoc.parse(doc));
+    await engine.syncNow();
+    expect(repos.rewardCache.get()).toMatchObject({ totalXp: xp });
+    repos.sessions.delete(s.id);
+    await engine.syncNow();
+    expect(repos.rewardCache.get()?.awardedSessionIds).not.toContain(s.id);
+    expect(repos.rewardCache.get()!.totalXp).toBeLessThan(xp);
+  });
+
+  it('account settings edited offline sync later; the goal never lands in the current week', async () => {
+    const client = await signIn('b');
+    const { error } = await client.rpc('complete_onboarding', { p_handle: `b_${run}`.slice(0, 30), p_display_name: 'Bea', p_weight_unit: 'kg', p_length_unit: 'cm', p_timezone: 'UTC', p_target_days: 3 });
+    if (error) throw error;
+    const d = track(device(client));
+    // Cached account (as the account loader writes it); the first pull fills the server revision.
+    d.sqlite.exec(`INSERT INTO account_profile (id, handle, display_name, visibility, avatar_path, updated_at)
+                   VALUES ('${userIds[1]}', 'b', 'Bea', 'private', NULL, '2026-11-25T00:00:00Z');
+                   INSERT INTO user_settings VALUES (1, 'kg', 'cm', 'UTC', '2026-11-25T00:00:00Z');`);
+    await d.engine.syncNow();
+    const rev = d.repos.accountSettings.get()!.serverRevision!;
+    expect(rev).toBeGreaterThanOrEqual(1);
+
+    d.rpc.offline = true;
+    d.repos.accountSettings.save({ displayName: 'Bea Offline', visibility: 'public', weightUnit: 'lb', lengthUnit: 'cm', timezone: 'UTC', targetDays: 5 });
+    await d.engine.syncNow();
+    expect(d.repos.accountSettings.get()).toMatchObject({ visibility: 'public', pendingOps: 1, serverRevision: rev });
+    expect(await serverRow('profiles', userIds[1])).toMatchObject({ visibility: 'private', display_name: 'Bea' });
+
+    d.rpc.offline = false;
+    await d.engine.syncNow();
+    expect(await serverRow('profiles', userIds[1])).toMatchObject({ visibility: 'public', display_name: 'Bea Offline' });
+    const { data: goals } = await admin.from('weekly_goals').select('effective_week, target_days').eq('owner_id', userIds[1]).order('effective_week');
+    expect(goals!.map((g) => g.target_days)).toEqual([3, 5]);
+    expect(goals![1].effective_week > goals![0].effective_week).toBe(true);
+    expect(d.repos.accountSettings.get()).toMatchObject({ pendingOps: 0, serverRevision: rev + 1, weightUnit: 'lb' });
+    expect(d.repos.accountSettings.get()!.weeklyGoals.map((g) => g.targetDays)).toEqual([3, 5]);
+  });
 });

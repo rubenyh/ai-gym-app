@@ -8,7 +8,7 @@ import { Card, Row, Screen, SectionTitle, SmallButton } from '@/components/ui/la
 import { ThemedText } from '@/components/themed-text';
 import { useLocalQuery, useRepositories } from '@/db/repositories-context';
 import { sessionDoc, type PerformedSet, type SessionDoc } from '@/domain/contracts';
-import type { Repositories, SyncMeta } from '@/domain/repositories';
+import type { HistoryCursor, Repositories, SyncMeta } from '@/domain/repositories';
 import { deletePost, findPostsForSession } from '@/features/community/api';
 
 import { errorMessage, formatClock, REPS_REQUIRED, sessionStats, SyncBadge, useWeightUnit } from './common';
@@ -17,15 +17,16 @@ import { publishHref, SessionStats } from './summary-screen';
 
 const PAGE_SIZE = 30;
 
-/** Pages through history with the completedAt cursor; re-reads all loaded pages after each write. */
+/** Pages through history with the (completedAt, id) cursor; re-reads all loaded pages after each write. */
 export function readHistoryPages(r: Repositories, pages: number) {
   const sessions: (SessionDoc & SyncMeta)[] = [];
-  let before: string | undefined;
+  let before: HistoryCursor | undefined;
   for (let i = 0; i < pages; i++) {
     const page = r.sessions.history({ limit: PAGE_SIZE, before });
     sessions.push(...page);
     if (page.length < PAGE_SIZE) return { sessions, hasMore: false };
-    before = page[page.length - 1].completedAt ?? undefined;
+    const last = page[page.length - 1];
+    before = { completedAt: last.completedAt!, id: last.id };
   }
   return { sessions, hasMore: true };
 }
@@ -235,7 +236,12 @@ async function confirmDeleteSession(sessionId: string, deleteSession: () => void
         text: 'Delete both',
         style: 'destructive',
         onPress: async () => {
-          await Promise.allSettled(posts.map((p) => deletePost(p)));
+          const results = await Promise.allSettled(posts.map((p) => deletePost(p)));
+          // Never report "both deleted" while a post is still public: keep the workout so the user can retry.
+          if (results.some((r) => r.status === 'rejected')) {
+            Alert.alert('Post not deleted', 'Your workout was kept. Check your connection and try again, or delete the post from Community.');
+            return;
+          }
           deleteSession();
         },
       },
