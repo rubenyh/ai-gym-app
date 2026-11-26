@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { AlertHost } from '@/components/alert-host';
 import { RepositoriesProvider } from '@/db/repositories-context';
 import { AccountProvider, useAccount } from '@/features/account/account-provider';
 import { QueryProvider } from '@/services/query-provider';
@@ -17,6 +18,7 @@ export default function RootLayout() {
         <AccountProvider>
           <RepositoriesProvider>
             <RootStack />
+            <AlertHost />
           </RepositoriesProvider>
         </AccountProvider>
       </QueryProvider>
@@ -43,6 +45,10 @@ function RootStack() {
     if (kind !== 'loading') SplashScreen.hideAsync();
   }, [kind]);
 
+  // Mount routes only once the account state is known: guards evaluated while loading would redirect the
+  // opened URL (web reload, native cold-start deep link) away before it can be shown. The splash covers this.
+  if (kind === 'loading') return null;
+
   return (
     <Stack>
       <Stack.Protected redirectTo={home} guard={kind === 'ready'}>
@@ -55,8 +61,7 @@ function RootStack() {
         <Stack.Screen name="social" options={{ headerShown: false }} />
         <Stack.Screen name="sync-status" options={{ title: 'Sync status' }} />
       </Stack.Protected>
-      {/* While loading, the splash screen covers this group. */}
-      <Stack.Protected redirectTo={home} guard={kind === 'signed-out' || kind === 'loading'}>
+      <Stack.Protected redirectTo={home} guard={kind === 'signed-out'}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected redirectTo={home} guard={kind === 'needs-onboarding'}>
@@ -65,7 +70,7 @@ function RootStack() {
       <Stack.Protected redirectTo={home} guard={kind === 'offline'}>
         <Stack.Screen name="account-offline" options={{ title: 'Offline' }} />
       </Stack.Protected>
-      <Stack.Protected redirectTo={home} guard={kind !== 'signed-out' && kind !== 'loading'}>
+      <Stack.Protected redirectTo={home} guard={kind !== 'signed-out'}>
         <Stack.Screen name="reset-password" options={{ title: 'New password' }} />
       </Stack.Protected>
       <Stack.Screen name="auth/callback" options={{ title: 'Signing in' }} />
