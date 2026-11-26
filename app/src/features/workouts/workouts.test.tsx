@@ -145,6 +145,28 @@ describe('LoggerScreen', () => {
   });
 });
 
+describe('SetRow commits', () => {
+  it('keeps the weight being typed when the reps commit re-renders the row', async () => {
+    const view = await render(<LoggerScreen sessionId={SESSION_ID} />);
+    await fireEvent.changeText(screen.getByLabelText('Set 1 reps'), '8');
+    await fireEvent(screen.getByLabelText('Set 1 reps'), 'blur'); // moving to the weight field commits reps
+    await fireEvent.changeText(screen.getByLabelText('Set 1 Weight (kg)'), '60');
+    // The committed write comes back as new stored values.
+    mockState.session = makeSession({ reps: 8 });
+    await view.rerender(<LoggerScreen sessionId={SESSION_ID} />);
+    expect(screen.getByLabelText('Set 1 Weight (kg)').props.value).toBe('60');
+    expect(screen.getByLabelText('Set 1 reps').props.value).toBe('8');
+  });
+
+  it('shows a stored value that changed elsewhere (pull, undo)', async () => {
+    const view = await render(<LoggerScreen sessionId={SESSION_ID} />);
+    mockState.session = makeSession({ reps: 5, loadGrams: 40_000 });
+    await view.rerender(<LoggerScreen sessionId={SESSION_ID} />);
+    expect(screen.getByLabelText('Set 1 reps').props.value).toBe('5');
+    expect(screen.getByLabelText('Set 1 Weight (kg)').props.value).toBe('40');
+  });
+});
+
 describe('LoggerScreen performance', () => {
   it('does not re-query previous results on clock ticks or set writes', async () => {
     jest.useFakeTimers({ now: T0 });

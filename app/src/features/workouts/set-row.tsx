@@ -30,7 +30,8 @@ export function targetText(targetReps: number | null, targetLoadGrams: number | 
 
 /**
  * One performed set. Text is committed on blur/submit and before completing, so a tap on "Complete"
- * while the keyboard is open never loses typed reps. Parent should key this row by the committed values.
+ * while the keyboard is open never loses typed reps. Key the row by set id only: a commit must not remount it
+ * (that dropped focus and the other field's typed text).
  */
 export function SetRow({
   set,
@@ -47,6 +48,14 @@ export function SetRow({
   const [repsText, setRepsText] = useState(set.reps === null ? '' : String(set.reps));
   const [loadText, setLoadText] = useState(formatWeight(set.loadGrams, unit, false));
   const [error, setError] = useState<string | null>(null);
+  // Stored values changed outside this input (undo, server pull, unit switch): show them. A commit of the
+  // field being typed into round-trips to the same value; the other field keeps its in-progress text.
+  const [shown, setShown] = useState({ reps: set.reps, loadGrams: set.loadGrams, unit });
+  if (shown.reps !== set.reps || shown.loadGrams !== set.loadGrams || shown.unit !== unit) {
+    if (shown.reps !== set.reps) setRepsText(set.reps === null ? '' : String(set.reps));
+    if (shown.loadGrams !== set.loadGrams || shown.unit !== unit) setLoadText(formatWeight(set.loadGrams, unit, false));
+    setShown({ reps: set.reps, loadGrams: set.loadGrams, unit });
+  }
   const n = index + 1;
   const showLoad = set.loadMode !== 'bodyweight';
 

@@ -164,7 +164,7 @@ export function LoggerScreen({ sessionId }: { sessionId: string }) {
             </Row>
             {ex.sets.map((s, j) => (
               <SetRow
-                key={`${s.id}:${s.reps}:${s.loadGrams}:${unit}`}
+                key={s.id}
                 set={s}
                 index={j}
                 unit={unit}
