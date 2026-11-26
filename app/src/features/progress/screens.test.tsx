@@ -27,24 +27,43 @@ const mockRepos = {
     return () => (mockListeners = mockListeners.filter((x) => x !== l));
   },
 };
-jest.mock('@/db/repositories-context', () => ({
-  useRepositories: () => mockRepos,
-  useLocalQuery: (read: (r: unknown) => unknown) => read(mockRepos),
-}));
-jest.mock('@/features/account/account-provider', () => ({
-  useAccount: () => ({
-    state: {
-      kind: 'ready',
-      userId: 'u',
-      stale: false,
-      account: {
-        profile: { displayName: 'Ana' },
-        settings: { weightUnit: 'kg', timezone: 'Europe/Madrid' },
-        goals: [{ effectiveWeek: '2026-11-02', targetDays: 3, timezone: 'Europe/Madrid' }],
-      },
+// Same contract as the real hook: re-read on every committed write (subscribe) or dep change.
+jest.mock('@/db/repositories-context', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useEffect, useMemo, useState } = require('react');
+  return {
+    useRepositories: () => mockRepos,
+    useLocalQuery: (read: (r: unknown) => unknown, deps: unknown[]) => {
+      const [version, setVersion] = useState(0);
+      useEffect(() => mockRepos.subscribe(() => setVersion((v: number) => v + 1)), []);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      return useMemo(() => read(mockRepos), [version, ...deps]);
     },
-  }),
-}));
+  };
+});
+const mockCalls = { consistency: 0, records: 0 };
+jest.mock('./calc/consistency', () => {
+  const actual = jest.requireActual('./calc/consistency');
+  return { ...actual, weeklyConsistency: (...a: unknown[]) => (mockCalls.consistency++, actual.weeklyConsistency(...a)) };
+});
+jest.mock('./calc/records', () => {
+  const actual = jest.requireActual('./calc/records');
+  return { ...actual, computeRecords: (...a: unknown[]) => (mockCalls.records++, actual.computeRecords(...a)) };
+});
+// Stable state object, like AccountProvider (it only changes when the account changes).
+const mockAccountValue = {
+  state: {
+    kind: 'ready',
+    userId: 'u',
+    stale: false,
+    account: {
+      profile: { displayName: 'Ana' },
+      settings: { weightUnit: 'kg', timezone: 'Europe/Madrid' },
+      goals: [{ effectiveWeek: '2026-11-02', targetDays: 3, timezone: 'Europe/Madrid' }],
+    },
+  },
+};
+jest.mock('@/features/account/account-provider', () => ({ useAccount: () => mockAccountValue }));
 const mockStart = jest.fn();
 jest.mock('@/features/workouts/start-session', () => ({ useStartSession: () => mockStart, openLogger: jest.fn() }));
 jest.mock('@/components/characters/characters', () => ({ PetCharacter: () => null, petStageName: () => 'Egg' }));
@@ -81,6 +100,34 @@ describe('progress screens', () => {
 
     await act(async () => mockListeners.forEach((l) => l()));
     expect(mockHistory).toHaveBeenCalledTimes(3);
+  });
+
+  it('N set saves in the logger cause no history reads or progress recomputation in hidden Home/Progress tabs', async () => {
+    const SET_SAVES = 20;
+    const notifyWrite = () => act(async () => mockListeners.forEach((l) => l()));
+    mockFocused = false; // logger pushed above the tab shell
+    await render(
+      <>
+        <HomeScreen />
+        <ProgressScreen />
+      </>,
+    );
+    const reads = mockHistory.mock.calls.length;
+    const calc = { ...mockCalls };
+    expect(reads).toBe(2); // one initial full-history read per mounted screen
+
+    for (let i = 0; i < SET_SAVES; i++) await notifyWrite();
+    expect(mockHistory).toHaveBeenCalledTimes(reads);
+    expect(mockCalls).toEqual(calc);
+  });
+
+  it('the visible summary re-reads once per write (needed to clear pending labels), never per render', async () => {
+    const view = await render(<SummaryRewards sessionId={sessionFixture.id} />);
+    const reads = mockHistory.mock.calls.length;
+    await view.rerender(<SummaryRewards sessionId={sessionFixture.id} />);
+    expect(mockHistory).toHaveBeenCalledTimes(reads);
+    for (let i = 0; i < 3; i++) await act(async () => mockListeners.forEach((l) => l()));
+    expect(mockHistory).toHaveBeenCalledTimes(reads + 3);
   });
 
   it('marks new records provisional while the workout is unsynced', async () => {

@@ -1,4 +1,5 @@
 import { Link, useIsFocused } from 'expo-router';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,7 +36,8 @@ export function HomeScreen() {
     },
     [weekday],
   );
-  const week = weeklyConsistency(sessions, goals, today)[0];
+  // Full-history calc: Home re-renders on every logger write (active/planned reads), so memoize it.
+  const week = useMemo(() => weeklyConsistency(sessions, goals, today)[0], [sessions, goals, today]);
   const thisWeek = week && week.weekStart === weekStart(today) ? week : null;
 
   return (
