@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FormMessage, FormScreen } from '@/components/form';
 import { friendlyError } from '@/features/account/errors';
 import { exchangeCode } from '@/features/auth/auth-actions';
+import { supabase } from '@/services/supabase/client';
 
 // A code can be exchanged once. Effects may run twice for one link (React dev remount, re-render after
 // navigation), so every run for the same code shares the first exchange instead of failing the second time.
@@ -11,7 +12,11 @@ const exchanges = new Map<string, Promise<void>>();
 function exchangeOnce(code: string): Promise<void> {
   let pending = exchanges.get(code);
   if (!pending) {
-    pending = exchangeCode(code);
+    // A reopened or refreshed link whose code was already used: fine when that exchange signed us in.
+    pending = exchangeCode(code).catch(async (e) => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw e;
+    });
     exchanges.set(code, pending);
   }
   return pending;
