@@ -2,7 +2,7 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 
 import { Button, Choice, FormMessage, FormScreen, TextField } from '@/components/form';
@@ -18,6 +18,9 @@ import { Card, CoachQueryProvider, coachQueryClient, draftKey, profileKey } from
 const PROFILE_FIELDS = new Set(['goal', 'experience', 'equipment', 'limitations', 'availableWeekdays', 'sessionMinutes']);
 
 /** COACH-01 entry: optional coach. Routines and logging never depend on it. */
+/** Polling stops after the server budget (90 s) plus margin; the user can re-ask with the same request ID. */
+const POLL_LIMIT_MS = 120_000;
+
 export function CoachScreen() {
   return (
     <CoachQueryProvider>
@@ -54,11 +57,14 @@ function CoachHome() {
       });
     },
     onMutate: () => {
+      setPollExpired(false);
       setError(null);
       setResponse(null);
     },
     onSuccess: (r) => {
-      requestId.current = null; // definitive answer: a new attempt is a new request
+      // Definitive answer: a new attempt is a new request. A 'pending' duplicate is not definitive: keep the ID
+      // so "Check again" re-asks for the same request (the server expires stale pending work after 5 minutes).
+      if (r.status !== 'pending') requestId.current = null;
       coachQueryClient.setQueryData(draftKey(r.draftId), r);
       setResponse(r);
     },
@@ -71,14 +77,23 @@ function CoachHome() {
     },
   });
 
-  // A concurrent duplicate returns 'pending': poll until the server finishes.
+  // A concurrent duplicate returns 'pending': poll until the server finishes, but never forever.
+  const [pollExpired, setPollExpired] = useState(false);
+  const pendingDraftId = response?.status === 'pending' ? response.draftId : null;
+  useEffect(() => {
+    if (!pendingDraftId) return;
+    const timer = setTimeout(() => setPollExpired(true), POLL_LIMIT_MS);
+    return () => clearTimeout(timer);
+  }, [pendingDraftId]);
   const polled = useQuery({
     queryKey: draftKey(response?.draftId ?? 'none'),
     queryFn: () => coachClient.getDraft(response!.draftId),
     enabled: response?.status === 'pending',
-    refetchInterval: (q) => (q.state.data?.status === 'pending' || !q.state.data ? 2000 : false),
+    refetchInterval: (q) =>
+      (q.state.data?.status === 'pending' || !q.state.data) && !pollExpired ? 2000 : false,
   });
   const current = polled.data ?? response;
+  const stalled = current?.status === 'pending' && pollExpired;
 
   const send = (extra?: string) => {
     const body = extra ? `${text.trim()}\n${extra}` : text.trim();
@@ -149,7 +164,14 @@ function CoachHome() {
         onPress={() => send()}
       />
 
-      {submit.isPending || current?.status === 'pending' ? (
+      {stalled ? (
+        <Card>
+          <FormMessage tone="info" text="This draft is taking longer than expected. Your current program is unchanged." />
+          <Button label="Check again" onPress={() => send()} />
+        </Card>
+      ) : null}
+
+      {submit.isPending || (current?.status === 'pending' && !stalled) ? (
         <Card>
           <ActivityIndicator />
           <ThemedText accessibilityLiveRegion="polite">Generating your draft. This can take up to 90 seconds.</ThemedText>

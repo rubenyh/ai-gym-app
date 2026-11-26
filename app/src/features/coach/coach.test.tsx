@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act } from 'react';
 import type { ReactNode } from 'react';
 
 import { coachApprovalDoc, type CoachDraftResponse } from '@/domain/contracts';
@@ -177,6 +178,28 @@ describe('coach request (COACH-01)', () => {
     const [a, b] = client.createDraft.mock.calls.map((c) => c[0]);
     expect(a.requestId).toBe(b.requestId);
     expect(mockRepos.programs.applyCoachApproval).not.toHaveBeenCalled();
+  });
+
+  it('stops polling a stuck pending draft and re-asks with the same request ID', async () => {
+    jest.useFakeTimers();
+    try {
+      const pending = { ...readyDraft, status: 'pending' as const, draft: null };
+      client.createDraft.mockResolvedValueOnce(pending);
+      client.getDraft.mockResolvedValue(pending);
+      client.createDraft.mockResolvedValueOnce(readyDraft);
+      await render(<CoachScreen />);
+      await fireEvent.changeText(screen.getByLabelText('Your request'), 'Two days');
+      await fireEvent.press(screen.getByText('Generate draft'));
+      await act(async () => {
+        jest.advanceTimersByTime(121_000);
+      });
+      await fireEvent.press(await screen.findByText('Check again'));
+      const [a, b] = client.createDraft.mock.calls.map((c) => c[0]);
+      expect(b.requestId).toBe(a.requestId);
+      expect(mockRepos.programs.applyCoachApproval).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('reuses the request ID after a server timeout (504) and resets it after a 429 limit', async () => {
