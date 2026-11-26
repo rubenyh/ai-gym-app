@@ -5,6 +5,8 @@ decision/blocker IDs (`O-xx`, `D-xx`) refer to [DECISIONS.md](DECISIONS.md). Sta
 **M0**: code and automated checks done; Android build/device verification **pending** (O-13, see
 [M0 status](#m0-status-2026-11-25)). **M1**: implemented and verified against the local Supabase stack; device
 verification pending with M0 (see [M1 status](#m1-status-2026-11-25)).
+**Web (2026-11-26)**: the app runs on Expo web and its main flows were tested in a browser against the local stack
+([web validation](#web-build-and-browser-validation-2026-11-26)); native device checks stay with the user.
 
 ## Dependency graph
 
@@ -59,6 +61,64 @@ workouts finished in the same millisecond at a page boundary can be skipped; lik
 **Next device checkpoint (single native build):** this build adds `expo-crypto`, `expo-image-picker` (photos
 permission only), `@react-native-community/netinfo` to the M0/M1 natives. After O-13: `npm run android`, then run
 the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../app/maestro/README.md)).
+
+## Web build and browser validation (2026-11-26)
+
+The user moved validation to the browser and handles Android/iOS device checks. The app now runs on Expo web
+from the same code (D-35, setup: [SETUP.md](SETUP.md#2b-web-browser)). Tested in the Orca embedded browser
+(Chromium 150) against the local Supabase stack and the local coach service without Gemini credentials, with two
+isolated browser profiles (Alice, Bob) and sequential sign-ins in one profile. Database state was checked with
+`psql` in the local DB container, not inferred from the UI.
+
+| Flow | Result |
+| --- | --- |
+| Sign-up → Mailpit confirmation link → callback → onboarding | pass (after fixes 1, 2, 8) |
+| Sign-in, sign-out, password reset via email link → new password → signed in | pass |
+| Catalog search + muscle/equipment filters; custom exercise create (synced) and isolation from another account | pass |
+| Routine create/edit, program create + activate (server rows checked) | pass |
+| Workout: add exercise, sets, complete, rest timer, finish, summary, server reward (100 XP) | pass (after fixes 3, 4, 5, 9) |
+| Reload during workout and close/reopen tab: active workout, typed reps and rest deadline restored | pass |
+| History edit (lb input stored as grams) and delete with server reward recalculation (200 → 100 XP) | pass (after fix 6) |
+| Offline (browser offline emulation): log a workout, edit settings (unit, name, goal) → pending labels; reconnect → synced, server rows checked | pass |
+| Pending-change sign-out: dialog (Sync now / Cancel / Discard); Sync now offline keeps the session with an error; Discard offline signs out and re-sign-in rehydrates server data | pass |
+| Account switch in one browser: Bob sees none of Alice's routines/workouts/custom exercises; Alice's data returns | pass |
+| Units: kg↔lb display and entry, body weight entry stored as grams | pass |
+| Progress, records, weekly consistency, achievements | pass |
+| Private profile: Bob cannot read Alice's post (UI and direct REST/Storage calls with Bob's token); follow request → accept → visible; public profile visible without follow | pass |
+| Like, comment, copy-to-routine; block hides post and profile from the blocked user | pass |
+| Photo publication: non-image bytes rejected before upload; PNG uploaded with detected type; offline publish → retry → one post, one object; double-click Publish → one post | pass |
+| Coach without credentials: real API call (CORS) returns "coach is not configured" with retry | pass; live Gemini **not tested** (no credentials, O-08) |
+| Rive on web (same `rating.riv`), static fallback offline, reduced motion → static (no canvas); page loads only from `localhost:8081` and `127.0.0.1:54321` (Rive wasm and its fallback served locally, 140fb72) | pass |
+| Desktop 1289 px, phone 412 px (Pixel 9 emulation), 200 % zoom: no horizontal scroll, tabs and titles visible | pass (after fix 10) |
+| Keyboard: Tab order through the logger, visible focus outline, Enter activates, Escape closes the picker and returns focus | pass |
+
+Bugs found in the browser and fixed (native code paths marked † are shared, so they were native bugs too):
+
+| # | Bug | Commit |
+| --- | --- | --- |
+| 1 | SSR (`web.output: server`) evaluated native-only modules; `openDatabaseSync` failed before the wasm worker loaded | `ccf777a` |
+| 2 | Protected routes redirected web URLs to the bare `(auth)` group; the callback exchanged one code twice | `ccf777a` |
+| 3 | † React Compiler cached `useLocalQuery` reads: saved sets/exercises appeared only after a reload | `102a3eb` |
+| 4 | `Alert.alert` is a no-op on react-native-web: confirmations and save errors vanished; † guards redirected deep links while loading | `1e8a8d3` |
+| 5 | † Committing reps remounted the set row and dropped the typed weight | `0dfee09` |
+| 6 | † Save in history edit used a stale draft and lost the last edited field | `1b0b7db` |
+| 7 | † Radios reported unchecked to assistive tech; toggle chips exposed no state on the web | `62ec230` |
+| 8 | Reopening a used confirmation link left a signed-in user on an error page | `2ce69be` |
+| 9 | † "Pending sync" line appearing on each write moved the Complete button mid-press (press lost) | `562e527` |
+| 10 | Web top tab bar covered screen titles on phone widths; back buttons read "(tabs)" | `e879c5d` |
+
+Also: coach API opt-in CORS (`fd32d43`), web auth redirect URL in local `config.toml` (`192fe79`).
+
+Still **not verified** (native, awaiting the user): everything on Android/iOS devices — build, SecureStore,
+native Rive, image picker, deep links `aigym://`, TalkBack/VoiceOver, large text, background/foreground sync,
+force-close recovery, Maestro flows, set-save latency. Fixes marked † change shared code and need that device pass.
+
+Remaining web limitations: training data lives in the browser's origin storage (clearing site data discards
+unsynced changes; one tab per account at a time — OPFS is exclusive per database file, a second tab was not
+tested); sessions in `localStorage`; Google sign-in untested (provider disabled, O-07); Rive logs its own console
+error when the `.riv` cannot load offline (the static pet is shown); screen
+readers on the web were checked through the accessibility tree only (no NVDA/JAWS/VoiceOver run); deployment
+headers (COOP/COEP) and web hosting are not set up.
 
 ## Android build attempt via WSL (2026-11-25/26)
 

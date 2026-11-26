@@ -60,6 +60,7 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | Diagnose deps | `npx expo-doctor` | 20/20 checks passed (downloads expo-doctor on demand) |
 | Android dev build | `npm run android` (`expo run:android`) | **fails on this Windows machine** (path length, O-13); see [M0 status](docs/IMPLEMENTATION_PLAN.md#m0-status-2026-11-25) |
 | Dev server | `npx expo start` | serves the installed development build |
+| Web app | `npx expo start --web --port 8081` with browser-reachable `EXPO_PUBLIC_*` URLs ([SETUP.md](docs/SETUP.md#2b-web-browser)) | verified 2026-11-26 in the Orca browser against the local stack; see [web validation](docs/IMPLEMENTATION_PLAN.md#web-build-and-browser-validation-2026-11-26) |
 | iOS dev build | `npm run ios` | **not verified**: needs macOS or EAS Build (open O-06) |
 | Local backend | `supabase start` (repo root) | works with Docker Desktop running (local stack only) |
 | Backend readiness | `bash scripts/supabase-ready.sh` (repo root) | probes REST + Storage via Kong; on 502 restarts Kong once (stale container IPs after `db reset`), bounded 10 × 1 s |
