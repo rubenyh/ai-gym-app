@@ -89,11 +89,11 @@ COACH_CORS_ORIGINS=http://localhost:8081 SUPABASE_URL=http://127.0.0.1:54321 SUP
 Web-specific notes:
 
 - The dev server sends `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless`
-  (`app/metro.config.js`); expo-sqlite needs them for `SharedArrayBuffer`. A deployed web build must send the same
-  headers from its host. Without them the app shows "This page cannot use offline storage … Reload the page."
-- Orca's embedded browser does not always apply cross-origin isolation on navigation (it alternated between
-  isolated and not isolated on consecutive reloads of the same URL, with the headers always present). Reload once
-  if the message above appears there; regular Chrome applies the headers on the first load.
+  on every response (`app/metro.config.js`); expo-sqlite needs them for `SharedArrayBuffer`. A deployed web build
+  must send the same headers from its host. Without them the app shows "This page cannot use offline storage …".
+  Check: `curl -sI http://localhost:8081/ | grep -i cross-origin` must print both headers (also for `/`).
+- One tab per account: the local database is held by one tab (OPFS exclusive access). A second tab of the same
+  browser profile shows "Open in another tab" with Retry until the first tab is closed.
 - Session tokens are kept in this origin's `localStorage` (no keychain in browsers); see D-35.
 
 ## 3. Coach service (`services/coach-api`)

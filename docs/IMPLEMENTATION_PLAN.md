@@ -114,11 +114,19 @@ native Rive, image picker, deep links `aigym://`, TalkBack/VoiceOver, large text
 force-close recovery, Maestro flows, set-save latency. Fixes marked † change shared code and need that device pass.
 
 Remaining web limitations: training data lives in the browser's origin storage (clearing site data discards
-unsynced changes; one tab per account at a time — OPFS is exclusive per database file, a second tab was not
-tested); sessions in `localStorage`; Google sign-in untested (provider disabled, O-07); Rive logs its own console
+unsynced changes; one active tab per account, see below); sessions in `localStorage`; Google sign-in untested (provider disabled, O-07); Rive logs its own console
 error when the `.riv` cannot load offline (the static pet is shown); screen
 readers on the web were checked through the accessibility tree only (no NVDA/JAWS/VoiceOver run); deployment
 headers (COOP/COEP) and web hosting are not set up.
+
+### Web reliability follow-up (2026-11-26)
+
+| Check | Result |
+| --- | --- |
+| Regular Chrome 158 (headed, throwaway profile, driven over CDP): headers and `crossOriginIsolated` on initial load of `/`, 4 reloads, direct navigation to `/progress` and `/workouts`, cross-origin hop and back | **failed first**: initial `/` had no COOP/COEP and was not isolated. Cause: Expo CLI serves `/` from its manifest middleware ahead of Metro, so `enhanceMiddleware` never ran for it; deep URLs were fine. The Orca "alternating reloads" were the same bug (reloading `/` vs `/sign-in`). Fixed in `98f9596`; rerun: isolated with both headers on every load in Chrome, 5/5 reloads in Orca |
+| Two tabs, same account (same browser profile) | **failed first**: second tab could not open the OPFS database and showed "No connection" with a raw browser error. Now one active tab per account (`8391ef6`): second tab shows "Open in another tab" + Retry; holder reloads keep the lock (3/3); a workout finished in tab 1 synced once (server: 2 events, 200 XP, unchanged after tab 2 took over); an offline routine edit in a closed tab synced from the next tab; sign-out in one tab moved the other to sign-in; signing in again leaves exactly one active tab (a sign-in race that opened the database without the lock was found and fixed in the same commit) |
+| Simultaneous edits in two tabs | not possible by design now (the second tab cannot open the database), so no lost writes or duplicate rewards from concurrent writers |
+| Coach integration tests with the local env exported | 5/5 pass (scripted model + local Supabase; no Gemini needed). Full coach suite: 51 pass. No external blocker |
 
 ## Android build attempt via WSL (2026-11-25/26)
 

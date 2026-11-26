@@ -73,7 +73,7 @@ Supabase CLI 2.75.0 (3.4.0 available). Run app commands from `app/`.
 | Local SQLite migrations | `npm run db:generate` (in `app/`) | Drizzle; regenerate after editing `app/src/db/schema.ts` |
 | Catalog import | `node scripts/import-exercises.mjs <clone-of-exercises-dataset>` (in `app/`) | writes `assets/catalog/exercises.v1.json` (metadata only, pinned SHA in ATTRIBUTION.md) |
 | Sync end-to-end | `set -a; eval "$(supabase status -o env)"; set +a; npm run test:integration` (in `app/`) | passes, 10 tests; real engine + repositories vs local stack; refuses non-local URLs |
-| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per [its README](services/coach-api/README.md)) | passes, 47 with local env exported (integration tests skip otherwise) |
+| Coach tests | `.venv/Scripts/python -m pytest -q` (in `services/coach-api/`, venv per [its README](services/coach-api/README.md)) | passes, 51 with local env exported (`set -a; eval "$(supabase status -o env)"; set +a`); without it the 5 integration tests skip. They use a scripted model and the local stack, no Gemini key |
 
 Full local setup (prerequisites, env files, stack, app, coach): [docs/SETUP.md](docs/SETUP.md).
 Update this table when a command is added or its status changes. Never document a command you have
