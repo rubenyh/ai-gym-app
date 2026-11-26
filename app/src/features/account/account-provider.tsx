@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 
-import { closeAccountDb, deleteAccountDb, getOpenAccountDb, openAccountDb } from '@/db/account-db';
+import { closeAccountDb, deleteAccountDb, getOpenAccountDb, openAccountDb, retireAccountDb } from '@/db/account-db';
 import { supabase } from '@/services/supabase/client';
 
 import { cacheAccount, fetchRemoteAccount, readCachedAccount } from './account-data';
@@ -93,7 +93,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     async (options?: { discard?: boolean }) => {
       // 'local' clears this device's session even when the network is down. Without an explicit discard
       // the account file (and its outbox) stays on the device and syncs on the next sign-in.
-      await supabase.auth.signOut({ scope: 'local' });
+      // In-flight sync results for this account are discarded from here on (never written after sign-out).
+      retireAccountDb();
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (e) {
+        retireAccountDb(false);
+        throw e;
+      }
       if (options?.discard && userId) await deleteAccountDb(userId);
       else await closeAccountDb();
     },

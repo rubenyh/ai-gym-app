@@ -45,6 +45,11 @@ export type SyncEngineOptions = {
   now?: () => number;
   /** Delay before syncing after a local write (0 disables auto-sync on write). */
   writeDebounceMs?: number;
+  /**
+   * False once this engine's account is no longer the open, signed-in one (sign-out, account switch).
+   * Checked before applying any network result; a stale result is discarded.
+   */
+  isCurrent?: () => boolean;
 };
 
 const BASE_DELAY_MS = 2_000;
@@ -75,6 +80,8 @@ export function createSyncEngine(repos: LocalRepositories, rpc: SyncRpc, opts: S
   const listeners = new Set<() => void>();
 
   let stopped = true;
+  /** Bumped by stop(): a cycle started under an older generation never writes its results. */
+  let generation = 0;
   const setStatus = (next: SyncStatus) => {
     if (stopped && next.phase !== 'stopped') return;
     status = next;
@@ -105,8 +112,13 @@ export function createSyncEngine(repos: LocalRepositories, rpc: SyncRpc, opts: S
   /** One full cycle. Returns normally on success or after scheduling a retry. */
   async function cycle(force: boolean): Promise<void> {
     setStatus({ phase: 'syncing', nextRetryAt: null });
+    const mine = generation;
+    // After every await: if the account was signed out/switched meanwhile, drop the result unwritten. An
+    // inflight op stays inflight and is resent later with the same opId (the server answers `duplicate`).
+    const live = () => mine === generation && !stopped && (opts.isCurrent?.() ?? true);
     try {
       for (;;) {
+        if (!live()) return;
         const next = store.nextOp(force);
         if (!next) break;
         if ('waitUntil' in next) return schedule(next.waitUntil.getTime());
@@ -114,12 +126,14 @@ export function createSyncEngine(repos: LocalRepositories, rpc: SyncRpc, opts: S
         try {
           raw = await rpc.push(next.op);
         } catch (e) {
+          if (!live()) return;
           if (e instanceof SyncAuthError) throw e;
           // Lost request or acknowledgement: resend the same frozen op later.
           const at = now() + backoffDelay(next.attempts, random);
           store.recordRetry(next.op.opId, message(e), new Date(at));
           return schedule(at);
         }
+        if (!live()) return;
         const res = pushResult.safeParse(raw);
         if (!res.success || res.data.opId !== next.op.opId) {
           const at = now() + backoffDelay(next.attempts, random);
@@ -128,18 +142,21 @@ export function createSyncEngine(repos: LocalRepositories, rpc: SyncRpc, opts: S
         }
         store.applyResult(next.op, res.data);
         force = false;
-        if (stopped) return;
       }
       for (;;) {
-        const page = changePage.parse(await rpc.pull(store.cursor(), pageSize));
+        const raw = await rpc.pull(store.cursor(), pageSize);
+        if (!live()) return;
+        const page = changePage.parse(raw);
         store.applyPage(page);
-        if (!page.hasMore || stopped) break;
+        if (!page.hasMore) break;
       }
       const summary = rewardSummary.safeParse(await rpc.rewardSummary());
+      if (!live()) return;
       if (summary.success) store.setRewardSummary(summary.data);
       failures = 0;
       setStatus({ phase: 'idle', nextRetryAt: null });
     } catch (e) {
+      if (!live()) return;
       if (e instanceof SyncAuthError) {
         clearTimer();
         safeSetError(e.message);
@@ -203,6 +220,7 @@ export function createSyncEngine(repos: LocalRepositories, rpc: SyncRpc, opts: S
       unsubscribeRepos = null;
       setStatus({ phase: 'stopped', nextRetryAt: null });
       stopped = true;
+      generation++;
     },
     syncNow: () => run('manual'),
     trigger: (kind = 'online') => run(kind),

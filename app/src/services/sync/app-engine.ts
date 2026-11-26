@@ -2,6 +2,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
 
+import { isAccountDbCurrent } from '@/db/account-db';
 import type { LocalRepositories } from '@/db/repositories';
 import { supabase } from '@/services/supabase/client';
 
@@ -10,7 +11,7 @@ import { createSupabaseSyncRpc } from './supabase-rpc';
 
 /** Engine for the signed-in account `userId`; triggers attach on start and detach on stop. */
 export function createAppSyncEngine(repos: LocalRepositories, userId: string): SyncEngine {
-  const engine = createSyncEngine(repos, createSupabaseSyncRpc(supabase, userId));
+  const engine = createSyncEngine(repos, createSupabaseSyncRpc(supabase, userId), { isCurrent: () => isAccountDbCurrent(userId) });
   let detach: (() => void) | null = null;
   return {
     ...engine,

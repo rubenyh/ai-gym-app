@@ -15,7 +15,7 @@ export function accountDatabaseName(userId: string): string {
   return `account-${userId.toLowerCase()}.db`;
 }
 
-let current: { userId: string; sqlite: SQLiteDatabase; db: AccountDb } | null = null;
+let current: { userId: string; sqlite: SQLiteDatabase; db: AccountDb; retiring?: boolean } | null = null;
 
 /** Opens (or reuses) the signed-in account's database and runs migrations before any query. */
 export async function openAccountDb(userId: string): Promise<AccountDb> {
@@ -33,6 +33,19 @@ export async function closeAccountDb(): Promise<void> {
   const open = current;
   current = null;
   await open?.sqlite.closeAsync();
+}
+
+/**
+ * True while `userId` is the open, signed-in account. The sync worker checks it before applying any network
+ * result, so a response that arrives during sign-out or an account switch is discarded unwritten.
+ */
+export function isAccountDbCurrent(userId: string): boolean {
+  return current?.userId === userId && !current.retiring;
+}
+
+/** Sign-out step 1: stop accepting sync results for this account before the session goes away. */
+export function retireAccountDb(retiring = true): void {
+  if (current) current.retiring = retiring;
 }
 
 /** The already-open database of the account (opened by the account provider), or null. */

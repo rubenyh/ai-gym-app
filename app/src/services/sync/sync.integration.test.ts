@@ -311,4 +311,27 @@ function faulty(rpc: SyncRpc): Faulty {
     expect(d.repos.accountSettings.get()).toMatchObject({ pendingOps: 0, serverRevision: rev + 1, weightUnit: 'lb' });
     expect(d.repos.accountSettings.get()!.weeklyGoals.map((g) => g.targetDays)).toEqual([3, 5]);
   });
+
+  it("a real client switched to account B mid-request still pushes A's op with A's token", async () => {
+    const real = await signIn('a');
+    // Same supabase-js client; B signs in on it right after the adapter read A's session (the race window).
+    const racing = {
+      auth: {
+        getSession: async () => {
+          const r = await real.auth.getSession();
+          const { error } = await real.auth.signInWithPassword(creds.b);
+          if (error) throw error;
+          return r;
+        },
+      },
+      rpc: real.rpc.bind(real),
+    };
+    const id = randomUUID();
+    const res = (await createSupabaseSyncRpc(racing as never, userIds[0]).push({
+      opId: randomUUID(), aggregateType: 'routine', aggregateId: id, action: 'upsert', baseRevision: null, doc: { ...routine(), id },
+    })) as { status: string };
+    expect((await real.auth.getSession()).data.session?.user.id).toBe(userIds[1]); // ambient session is B
+    expect(res.status).toBe('applied');
+    expect(await serverRow('routines', id)).toMatchObject({ owner_id: userIds[0] }); // never B's account
+  });
 });
