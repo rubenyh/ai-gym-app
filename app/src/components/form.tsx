@@ -70,7 +70,7 @@ export function Choice<T extends string | number>({
             <Pressable
               key={String(o.value)}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              aria-checked={selected}
               onPress={() => onChange(o.value)}>
               <ThemedView type={selected ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
                 <ThemedText type={selected ? 'smallBold' : 'small'}>{o.label}</ThemedText>

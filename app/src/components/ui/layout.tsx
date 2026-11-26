@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -54,6 +54,8 @@ export function SmallButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled, selected }}
+      // Web: `selected` is not exposed on a button; a toggle button reports pressed (react-native-web prop).
+      {...(Platform.OS === 'web' ? { 'aria-pressed': selected } : {})}
       disabled={disabled}
       onPress={onPress}>
       <ThemedView type={selected ? 'backgroundSelected' : 'background'} style={[styles.small, disabled && styles.disabled]}>
