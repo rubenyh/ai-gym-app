@@ -60,6 +60,20 @@ workouts finished in the same millisecond at a page boundary can be skipped; lik
 permission only), `@react-native-community/netinfo` to the M0/M1 natives. After O-13: `npm run android`, then run
 the M0 and M1 checklists and `app/maestro/*.yaml` (see [app/maestro/README.md](../app/maestro/README.md)).
 
+## Risk closure (2026-11-25)
+
+| Risk | Result | Evidence |
+| --- | --- | --- |
+| Account switch between the account check and request dispatch | **Race demonstrated and fixed**: A's queued routine was stored with `owner_id = B`. RPCs now send the issuing account's token explicitly after checking user id and token `sub`; a generation counter discards late responses after sign-out/switch (op stays inflight, resent idempotently). | `app/src/services/sync/account-isolation.test.ts` (5, failed before fix), gated `sync.integration.test.ts` (11/11) |
+| Concurrent coach limits | No race found: one winner for the last hourly and daily slot, rejected attempts use no budget, 6 concurrent duplicate POSTs make 1 provider call and 1 draft. Tests not mutation-checked against a broken version. | `services/coach-api/tests/test_integration_local.py` (passed 3 consecutive runs; full suite 50) |
+| Readiness script branches | Restart-once success, terminal failure after 10 bounded re-probes, no Kong container, non-local URL refusal | `node --test scripts/supabase-ready.test.mjs` (5/5, command stubs) |
+| Python dependency advisories | `pip-audit` (isolated scratch venv) on the 56 frozen coach packages: no known vulnerabilities | run 2026-11-25 |
+| Invalid image uploads | Local Storage enforces only the declared MIME label and size (HTML labelled `image/png` and a 30000×30000 header-only PNG were accepted). Client now checks real signature, header dimensions ≤ 4096 and byte limits before upload. **Not a trusted boundary**: a modified client can bypass it; server-side inspection would need a new service (not added). | `app/src/services/image-validation.test.ts` |
+| Full-history progress work during logging | 20 set saves with logger + hidden Home/Progress: 0 history reads, 0 consistency recomputations (was 22). Ceiling: full-history read (one query per session) still runs on focus and is unbounded in history size. | `app/src/features/progress/screens.test.tsx` |
+
+External-release prerequisites remain open under O-11 (account deletion incl. Storage cleanup, age eligibility,
+reporting, final privacy decisions). Recorded proposals in DECISIONS.md are not user acceptance of those risks.
+
 ## Review pass (2026-11-25)
 
 Independent review by five parallel reviewers (data/sync, security, coach, screens, performance/docs); fixes
@@ -80,7 +94,7 @@ committed with regression tests. Findings and resolutions:
 | Medium | "Delete both" deleted the workout when post deletion failed; missing confirmations; photo failure spinner | fixed with RNTL tests |
 | Medium | Feed like/comment counts ran per-row RLS | definer count helper |
 | Low | Post-reset 502 (Kong stale upstream IPs); back-to-back suites hit local sign-in limit | `scripts/supabase-ready.sh`; local limit 300 (D-34) |
-| Low (accepted) | Direct `coach_save_draft` by a user; PNG-typed non-image uploads served as image; private post counts on profile cards; files left on account deletion (O-11) | documented |
+| Low (open, not user-accepted) | Direct `coach_save_draft` by a user (D-32 proposal); private post counts on profile cards; files left on account deletion | recorded under O-11 as external-release prerequisites; recording is not user acceptance |
 
 Dependency audit: `npm audit` reports 20 (prod tree) / 26 (full) moderate advisories, all in build/test tooling
 (minimatch via `@expo/fingerprint`, jest/glob, esbuild via drizzle-kit), not app runtime; suggested fixes are
