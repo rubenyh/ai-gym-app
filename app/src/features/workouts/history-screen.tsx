@@ -1,6 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Pressable } from 'react-native';
 
 import { Button, FormMessage, TextField } from '@/components/form';
@@ -74,6 +74,10 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
   const session = useLocalQuery((r) => r.sessions.get(sessionId), [sessionId]);
   const [draft, setDraft] = useState<SessionDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const latestDraft = useRef(draft);
+  useLayoutEffect(() => {
+    latestDraft.current = draft;
+  });
 
   if (!session) {
     return (
@@ -130,6 +134,9 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
     setDraft((d) => d && { ...d, exercises: d.exercises.map((e) => (e.id !== exId ? e : { ...e, sets: fn(e.sets).map((s, i) => ({ ...s, position: i })) })) });
 
   function save() {
+    // Tapping Save blurs the field being typed in, whose commit updates the draft after this press handler was
+    // bound: read the latest committed draft, not the one this render closed over (it lost the last edit).
+    const draft = latestDraft.current;
     if (!draft) return;
     if (draft.exercises.some((e) => e.sets.some((s) => s.completed && !(s.reps && s.reps > 0)))) return setError(REPS_REQUIRED);
     if (!draft.exercises.some((e) => e.sets.some((s) => s.completed))) return setError('A finished workout needs at least one completed set. Delete it instead.');
@@ -146,7 +153,7 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 
   return (
     <Screen>
-      <TextField label="Workout name" value={draft.name} onChangeText={(name) => setDraft({ ...draft, name })} maxLength={100} />
+      <TextField label="Workout name" value={draft.name} onChangeText={(name) => setDraft((d) => d && { ...d, name })} maxLength={100} />
       {draft.exercises.map((ex) => (
         <Card key={ex.id}>
           <SectionTitle>{ex.exerciseName}</SectionTitle>
@@ -190,11 +197,11 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
             value={ex.notes}
             multiline
             maxLength={2000}
-            onChangeText={(notes) => setDraft({ ...draft, exercises: draft.exercises.map((e) => (e.id === ex.id ? { ...e, notes } : e)) })}
+            onChangeText={(notes) => setDraft((d) => d && { ...d, exercises: d.exercises.map((e) => (e.id === ex.id ? { ...e, notes } : e)) })}
           />
         </Card>
       ))}
-      <TextField label="Workout notes" value={draft.notes} multiline maxLength={2000} onChangeText={(notes) => setDraft({ ...draft, notes })} />
+      <TextField label="Workout notes" value={draft.notes} multiline maxLength={2000} onChangeText={(notes) => setDraft((d) => d && { ...d, notes })} />
       <FormMessage text={error} />
       <Button label="Save changes" onPress={save} />
       <Row>
