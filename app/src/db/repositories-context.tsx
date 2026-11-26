@@ -74,6 +74,9 @@ export function useOptionalSyncEngine(): SyncEngine | null {
  * `read` must only read; keep `deps` to the values it closes over.
  */
 export function useLocalQuery<T>(read: (r: Repositories) => T, deps: unknown[]): T {
+  // React Compiler treats calls during render as pure and would cache read(repos) while `read` and `repos` are
+  // unchanged, so a committed write would never show. The database is mutable state: opt this hook out.
+  'use no memo';
   const repos = useRepositories();
   const [version, setVersion] = useState(0);
   useEffect(() => repos.subscribe(() => setVersion((v) => v + 1)), [repos]);

@@ -29,6 +29,9 @@ export const ALL_HISTORY = Number.MAX_SAFE_INTEGER;
  * history in every mounted tab. The read runs once when the screen regains focus.
  */
 export function useFocusedLocalQuery<T>(read: (r: Repositories) => T): T {
+  // Reads mutable database state keyed by `version`, which `read` never mentions: keep React Compiler from
+  // re-deriving the memo dependencies (see useLocalQuery).
+  'use no memo';
   const repos = useRepositories();
   const focused = useIsFocused();
   const [version, setVersion] = useState(0);
