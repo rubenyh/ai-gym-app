@@ -2,6 +2,7 @@ import { drizzle, type ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
+import { acquireAccountLock, releaseAccountLock } from './account-lock';
 import migrations from './migrations/migrations';
 import * as schema from './schema';
 
@@ -17,17 +18,37 @@ export function accountDatabaseName(userId: string): string {
 
 let current: { userId: string; sqlite: SQLiteDatabase; db: AccountDb; retiring?: boolean } | null = null;
 
+let opening: { userId: string; promise: Promise<AccountDb> } | null = null;
+
 /** Opens (or reuses) the signed-in account's database and runs migrations before any query. */
-export async function openAccountDb(userId: string): Promise<AccountDb> {
+export function openAccountDb(userId: string): Promise<AccountDb> {
+  // Concurrent calls for one account (sign-in fires more than one load) share a single open.
+  if (opening?.userId === userId) return opening.promise;
+  const promise = openAccountDbOnce(userId).finally(() => {
+    if (opening?.promise === promise) opening = null;
+  });
+  opening = { userId, promise };
+  return promise;
+}
+
+async function openAccountDbOnce(userId: string): Promise<AccountDb> {
   if (current?.userId === userId) return current.db;
   await closeAccountDb();
   // Web: wa-sqlite needs SharedArrayBuffer, which only cross-origin isolated pages get (metro.config.js headers).
   if ((globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === false) {
     throw new Error('This page cannot use offline storage (it is not cross-origin isolated). Reload the page.');
   }
-  // Async open: on the web it waits for the wa-sqlite worker, which the sync open would not.
-  const sqlite = await openDatabaseAsync(accountDatabaseName(userId));
-  await sqlite.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  await acquireAccountLock(accountDatabaseName(userId));
+  let sqlite: SQLiteDatabase | null = null;
+  try {
+    // Async open: on the web it waits for the wa-sqlite worker, which the sync open would not.
+    sqlite = await openDatabaseAsync(accountDatabaseName(userId));
+    await sqlite.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  } catch (e) {
+    await sqlite?.closeAsync().catch(() => undefined);
+    releaseAccountLock();
+    throw e;
+  }
   const db = drizzle(sqlite, { schema });
   await migrate(db, migrations);
   current = { userId, sqlite, db };
@@ -37,7 +58,11 @@ export async function openAccountDb(userId: string): Promise<AccountDb> {
 export async function closeAccountDb(): Promise<void> {
   const open = current;
   current = null;
-  await open?.sqlite.closeAsync();
+  try {
+    await open?.sqlite.closeAsync();
+  } finally {
+    if (open) releaseAccountLock();
+  }
 }
 
 /**

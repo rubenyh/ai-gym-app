@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { closeAccountDb, deleteAccountDb, getOpenAccountDb, openAccountDb, retireAccountDb } from '@/db/account-db';
+import { AccountInUseError } from '@/db/account-lock';
 import { supabase } from '@/services/supabase/client';
 
 import { cacheAccount, fetchRemoteAccount, readCachedAccount } from './account-data';
@@ -47,6 +48,13 @@ async function loadAccountState(userId: string | null): Promise<AccountState> {
   }
 }
 
+/** Local database failure: surface it with a retry instead of an endless splash screen. */
+function localFailureState(userId: string | null, e: unknown): AccountState {
+  if (!userId) return { kind: 'signed-out' };
+  if (e instanceof AccountInUseError) return { kind: 'offline', userId, message: e.message, openInOtherTab: true };
+  return { kind: 'offline', userId, message: String(e) };
+}
+
 export function AccountProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   // Keyed by account so a switch shows 'loading' instead of the previous account's state.
@@ -66,10 +74,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (userId === undefined) return;
     let cancelled = false;
     loadAccountState(userId)
-      .catch((e): AccountState =>
-        // Local database failure: surface it with a retry instead of an endless splash screen.
-        userId ? { kind: 'offline', userId, message: String(e) } : { kind: 'signed-out' },
-      )
+      .catch((e) => localFailureState(userId, e))
       .then((next) => !cancelled && setLoaded({ userId, state: next }));
     return () => {
       cancelled = true;
@@ -77,7 +82,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   }, [userId]);
 
   const refresh = useCallback(async () => {
-    if (userId !== undefined) setLoaded({ userId, state: await loadAccountState(userId) });
+    if (userId === undefined) return;
+    const next = await loadAccountState(userId).catch((e) => localFailureState(userId, e));
+    setLoaded({ userId, state: next });
   }, [userId]);
 
   const reloadLocal = useCallback(async () => {

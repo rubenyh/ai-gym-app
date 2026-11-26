@@ -53,4 +53,11 @@ describe('account database isolation (NFR-08)', () => {
     expect(await openAccountDb(A)).toBe(first);
     expect(mockOpened).toHaveLength(1);
   });
+
+  it('shares one open between concurrent calls for the same account', async () => {
+    const id = '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f';
+    const [a, b] = await Promise.all([openAccountDb(id), openAccountDb(id)]);
+    expect(a).toBe(b);
+    expect(mockOpened.filter((o) => o.name === accountDatabaseName(id))).toHaveLength(1);
+  });
 });

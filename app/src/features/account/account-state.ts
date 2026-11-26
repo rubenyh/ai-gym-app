@@ -7,7 +7,7 @@ export type AccountState =
   | { kind: 'needs-onboarding'; userId: string }
   | { kind: 'ready'; userId: string; account: AccountSnapshot; stale: boolean }
   /** Signed in, nothing cached, and the server is unreachable: onboarding status unknown. */
-  | { kind: 'offline'; userId: string; message: string };
+  | { kind: 'offline'; userId: string; message: string; openInOtherTab?: boolean };
 
 type Remote = { ok: true; account: AccountSnapshot | null } | { ok: false; message: string };
 
